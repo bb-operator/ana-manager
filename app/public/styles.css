@@ -1,18 +1,18 @@
 :root {
-  --ink: #13201b;
-  --muted: #69746e;
-  --cream: #f3efe4;
-  --paper: #fffaf0;
-  --line: #ded6c8;
-  --green: #23745a;
-  --green-2: #d9efe5;
-  --red: #be3b36;
-  --red-2: #f8d8d5;
-  --blue: #183b56;
-  --blue-2: #dbe9f2;
-  --gold: #b7832f;
-  --black: #111614;
-  --shadow: 0 18px 48px rgba(31, 38, 35, 0.12);
+  --ink: #17120e;
+  --muted: #7d746b;
+  --cream: #f6efe4;
+  --paper: #fffaf2;
+  --line: #e4d7c7;
+  --green: #1d6b52;
+  --green-2: #dff2e9;
+  --red: #b64037;
+  --red-2: #f9ded9;
+  --blue: #193549;
+  --blue-2: #dcebf1;
+  --gold: #c89446;
+  --black: #14100d;
+  --shadow: 0 24px 60px rgba(38, 28, 18, 0.14);
 }
 
 * {
@@ -24,9 +24,10 @@ body {
   min-height: 100vh;
   color: var(--ink);
   background:
-    radial-gradient(circle at top left, rgba(183, 131, 47, 0.22), transparent 28rem),
-    linear-gradient(135deg, #f7f0df 0%, #eef4ed 55%, #e3edf0 100%);
-  font-family: "Trebuchet MS", "Avenir Next", sans-serif;
+    radial-gradient(circle at 12% 8%, rgba(200, 148, 70, 0.32), transparent 24rem),
+    radial-gradient(circle at 82% 10%, rgba(29, 107, 82, 0.16), transparent 28rem),
+    linear-gradient(145deg, #f7ead7 0%, #f3efe8 46%, #e8f0ed 100%);
+  font-family: "Aptos", "Trebuchet MS", sans-serif;
 }
 
 button,
@@ -44,7 +45,9 @@ select {
   width: 270px;
   padding: 22px;
   color: white;
-  background: #111614;
+  background:
+    radial-gradient(circle at top, rgba(200, 148, 70, 0.22), transparent 16rem),
+    linear-gradient(180deg, #17120e 0%, #241b14 100%);
 }
 
 .brand {
@@ -59,9 +62,9 @@ select {
   width: 42px;
   height: 42px;
   place-items: center;
-  border-radius: 14px;
-  color: var(--black);
-  background: var(--gold);
+  border-radius: 16px;
+  color: #160f08;
+  background: linear-gradient(135deg, #f0c77d, #b97927);
   font-family: Georgia, serif;
   font-size: 24px;
 }
@@ -109,7 +112,8 @@ nav {
 .nav:hover,
 .nav.active {
   color: white;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 3px 0 0 var(--gold);
 }
 
 .rail-note {
@@ -156,13 +160,15 @@ nav {
   padding: 30px;
   border: 1px solid rgba(222, 214, 200, 0.7);
   border-radius: 28px;
-  background: rgba(255, 250, 240, 0.76);
+  background:
+    linear-gradient(135deg, rgba(255, 250, 242, 0.94), rgba(248, 239, 225, 0.72)),
+    radial-gradient(circle at right, rgba(29, 107, 82, 0.16), transparent 24rem);
   box-shadow: var(--shadow);
 }
 
 .kicker {
   margin: 0 0 8px;
-  color: var(--gold);
+  color: #a86d24;
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -282,7 +288,7 @@ h3 {
 .decision-card {
   border: 1px solid rgba(222, 214, 200, 0.88);
   border-radius: 22px;
-  background: rgba(255, 250, 240, 0.86);
+  background: rgba(255, 250, 242, 0.9);
   box-shadow: var(--shadow);
 }
 
@@ -314,6 +320,12 @@ h3 {
   color: var(--green);
   font-size: 38px;
   font-weight: 900;
+}
+
+.command-panel {
+  border-color: rgba(200, 148, 70, 0.36);
+  background:
+    linear-gradient(180deg, rgba(255, 250, 242, 0.96), rgba(250, 240, 224, 0.9));
 }
 
 .metric p {
@@ -362,6 +374,36 @@ h3 {
   display: grid;
   gap: 10px;
   margin-top: 16px;
+}
+
+.round-grid {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.round-card {
+  border: 1px solid rgba(228, 215, 199, 0.9);
+  border-radius: 20px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.round-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.round-title strong {
+  font-size: 18px;
+}
+
+.round-title span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .step-editor {
@@ -532,6 +574,49 @@ textarea {
 
 .decision-card {
   padding: 18px;
+}
+
+.decision-row,
+.contact-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px;
+  color: var(--ink);
+  background: white;
+  text-align: left;
+}
+
+.contact-row {
+  cursor: pointer;
+}
+
+.decision-row strong,
+.decision-row span,
+.contact-row strong,
+.contact-row span {
+  display: block;
+}
+
+.decision-row span,
+.contact-row span,
+.mini-pills small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.mini-pills {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.outbox-card textarea {
+  min-height: 140px;
 }
 
 .decision-card.big {

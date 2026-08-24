@@ -54,7 +54,21 @@ const promptOptions = [
   ['first_touch_sms', 'Primer toque SMS'],
   ['first_touch_email', 'Primer toque email'],
   ['airbnb_short_term_email', 'Airbnb / corto plazo'],
+  ['round2_sms', 'SMS dia 2'],
+  ['round2_email', 'Email dia 2'],
+  ['final_exit_email', 'Email salida final'],
 ];
+
+const ana2ActionLabels = {
+  continue_qualification: 'Continuar calificacion',
+  qualified_handoff: 'Qualified + handoff',
+  handoff_review: 'Handoff review',
+  human_review: 'Revision humana',
+  budget_review: 'Revision por budget',
+  short_term_unqualified: 'Corto plazo no califica',
+  opt_out: 'Opt out',
+  log_only: 'Solo log',
+};
 
 const dom = (selector) => document.querySelector(selector);
 const domAll = (selector) => [...document.querySelectorAll(selector)];
@@ -149,18 +163,25 @@ function renderDecision(target, decision) {
     budget_review: 'Revisión por presupuesto',
     continue_qualification: 'Continuar calificación',
     respect_channel_preference: 'Respetar canal preferido',
+    short_term_unqualified: 'Corto plazo no califica',
+    qualified_handoff: 'Qualified + handoff',
+    handoff_review: 'Handoff review',
+    log_only: 'Solo log',
+    opt_out: 'Opt out',
   };
+  const stopFlag = decision.stop_ai ?? decision.stop_cadence ?? false;
+  const slackFlag = decision.should_notify_slack ?? decision.send_slack ?? false;
 
   dom(target).innerHTML = `
     <div class="decision-top">
       <span class="decision-action">${actionTitles[decision.action] || decision.action}</span>
-      ${statusPill(!decision.stop_ai)}
+      ${statusPill(!stopFlag)}
     </div>
     <div class="decision-grid">
       <div><small>Ana responde</small><strong>${decision.should_reply ? 'Sí' : 'No'}</strong></div>
       <div><small>Qualified</small><strong>${decision.qualified ? 'Sí' : 'No'}</strong></div>
-      <div><small>Slack</small><strong>${decision.should_notify_slack ? 'Sí' : 'No'}</strong></div>
-      <div><small>Stop AI</small><strong>${decision.stop_ai ? 'Sí' : 'No'}</strong></div>
+      <div><small>Slack</small><strong>${slackFlag ? 'Sí' : 'No'}</strong></div>
+      <div><small>Stop</small><strong>${stopFlag ? 'Sí' : 'No'}</strong></div>
     </div>
     <p>${escapeHtml(decision.reason || 'Sin razón registrada.')}</p>
     <details>
@@ -183,14 +204,14 @@ function renderSystemStrip() {
 function renderMetrics() {
   const data = state.data;
   const activeRules = data.rules.filter((item) => item.enabled).length;
-  const activeCadences = data.cadences.filter((item) => item.enabled).length;
-  const activeProviders = data.providers.filter((item) => item.enabled).length;
-  const recentTests = data.tests?.length || 0;
+  const ana2Contacts = data.ana2Contacts?.length || 0;
+  const outboxDrafts = (data.ana2Outbox || []).filter((item) => item.status === 'draft').length;
+  const recentDecisions = data.ana2Decisions?.length || 0;
   dom('#metricGrid').innerHTML = `
     <article class="metric"><span>${activeRules}</span><p>Reglas activas</p></article>
-    <article class="metric"><span>${activeCadences}</span><p>Cadencias activas</p></article>
-    <article class="metric"><span>${activeProviders}</span><p>Proveedores activos</p></article>
-    <article class="metric"><span>${recentTests}</span><p>Tests recientes</p></article>
+    <article class="metric"><span>${ana2Contacts}</span><p>Contactos Ana 2.0</p></article>
+    <article class="metric"><span>${outboxDrafts}</span><p>Drafts en outbox</p></article>
+    <article class="metric"><span>${recentDecisions}</span><p>Decisiones auditadas</p></article>
   `;
 }
 
@@ -301,19 +322,24 @@ function renderRules() {
 }
 
 function renderCadences() {
-  const stepsByCadence = (state.data.cadenceSteps || []).reduce((groups, step) => {
-    groups[step.cadence_id] ||= [];
-    groups[step.cadence_id].push(step);
+  const actionsByCadence = (state.data.cadenceActions || []).reduce((groups, action) => {
+    groups[action.cadence_id] ||= [];
+    groups[action.cadence_id].push(action);
     return groups;
   }, {});
   dom('#cadenceCards').innerHTML = state.data.cadences.map((cadence) => {
-    const steps = (stepsByCadence[cadence.id] || []).sort((a, b) => a.step_number - b.step_number);
+    const actions = (actionsByCadence[cadence.id] || []).sort((a, b) => a.round_number - b.round_number || a.action_order - b.action_order);
+    const rounds = actions.reduce((groups, action) => {
+      groups[action.round_number] ||= [];
+      groups[action.round_number].push(action);
+      return groups;
+    }, {});
     return `
       <article class="operator-card">
         <div class="operator-head">
           <div>
             <h3>${cadence.lead_type.toUpperCase()}</h3>
-            <p>${escapeHtml(cadence.name_es || cadence.name_en)} · 3 momentos reales: Dia 1, Dia 2 y salida final.</p>
+            <p>${escapeHtml(cadence.name_es || cadence.name_en)} · Round 1 email/SMS/call, Round 2 email/SMS/call, Round 3 salida final.</p>
           </div>
           <label class="toggle">
             <input type="checkbox" data-resource="cadences" data-id="${cadence.id}" data-field="enabled" ${cadence.enabled ? 'checked' : ''} />
@@ -331,33 +357,43 @@ function renderCadences() {
             <button class="button primary">Guardar cadencia</button>
           </div>
         </form>
-        <div class="step-list">
-          ${steps.map((step) => `
-            <form class="step-editor" data-resource="cadenceSteps" data-id="${step.id}">
-              <div>
-                <strong>${cadenceStepLabel(step.step_number)}</strong>
-                <small>${delayLabel(step.delay_minutes)} · ${step.channel.toUpperCase()}</small>
+        <div class="round-grid">
+          ${[1, 2, 3].map((round) => `
+            <section class="round-card">
+              <div class="round-title">
+                <strong>${round === 3 ? 'Dia 3' : `Dia ${round}`}</strong>
+                <span>${round === 3 ? 'Salida final' : 'Email + SMS + llamada'}</span>
               </div>
-              <label>Canal
-                <select name="channel">
-                  ${channelOptions.map(([value, label]) => `<option value="${value}" ${selected(step.channel, value)}>${label}</option>`).join('')}
-                </select>
-              </label>
-              <label>Delay minutos
-                <input name="delay_minutes" type="number" value="${step.delay_minutes || 0}" />
-              </label>
-              <label>Prompt
-                <select name="prompt_key">
-                  ${promptOptions.map(([value, label]) => `<option value="${value}" ${selected(step.prompt_key, value)}>${label}</option>`).join('')}
-                </select>
-              </label>
-              <label class="toggle">
-                <input type="checkbox" data-resource="cadenceSteps" data-id="${step.id}" data-field="enabled" ${step.enabled ? 'checked' : ''} />
-                <span></span>
-              </label>
-              <button class="button secondary">Guardar paso</button>
-            </form>
-          `).join('') || '<p class="empty">Sin pasos todavia. Inicializa defaults para crear Dia 1, Dia 2 y salida final.</p>'}
+              <div class="step-list">
+                ${(rounds[round] || []).map((action) => `
+                  <form class="step-editor" data-resource="cadenceActions" data-id="${action.id}">
+                    <div>
+                      <strong>${escapeHtml(action.label_es || `${action.channel} ${action.action_order}`)}</strong>
+                      <small>${delayLabel(action.delay_minutes)} · ${action.channel.toUpperCase()}</small>
+                    </div>
+                    <label>Canal
+                      <select name="channel">
+                        ${channelOptions.map(([value, label]) => `<option value="${value}" ${selected(action.channel, value)}>${label}</option>`).join('')}
+                      </select>
+                    </label>
+                    <label>Delay minutos
+                      <input name="delay_minutes" type="number" value="${action.delay_minutes || 0}" />
+                    </label>
+                    <label>Prompt
+                      <select name="prompt_key">
+                        ${promptOptions.map(([value, label]) => `<option value="${value}" ${selected(action.prompt_key, value)}>${label}</option>`).join('')}
+                      </select>
+                    </label>
+                    <label class="toggle">
+                      <input type="checkbox" data-resource="cadenceActions" data-id="${action.id}" data-field="enabled" ${action.enabled ? 'checked' : ''} />
+                      <span></span>
+                    </label>
+                    <button class="button secondary">Guardar</button>
+                  </form>
+                `).join('') || '<p class="empty">Sin acciones para este round.</p>'}
+              </div>
+            </section>
+          `).join('')}
         </div>
       </article>
     `;
@@ -506,6 +542,69 @@ function renderSlack() {
   dom('#slackCards').innerHTML = createCard + cards;
 }
 
+function renderAna2() {
+  const contacts = state.data.ana2Contacts || [];
+  const decisions = state.data.ana2Decisions || [];
+  const select = dom('#ana2ContactSelect');
+  if (select) {
+    select.innerHTML = contacts.length ? contacts.map((contact) => `
+      <option value="${contact.id}">${escapeHtml(contact.name || contact.person_id || contact.email || contact.id)} · ${escapeHtml(contact.lead_type)}</option>
+    `).join('') : '<option value="">Crea un contacto primero</option>';
+  }
+
+  dom('#ana2Contacts').innerHTML = contacts.length ? contacts.map((contact) => `
+    <button class="contact-row" data-contact-id="${contact.id}">
+      <div>
+        <strong>${escapeHtml(contact.name || contact.person_id || 'Lead test')}</strong>
+        <span>${escapeHtml(contact.lead_type)} · ${escapeHtml(contact.status)} · ${escapeHtml(contact.trigger_tag || '')}</span>
+      </div>
+      ${statusPill(contact.mode === 'sandbox')}
+    </button>
+  `).join('') : '<div class="empty">Crea el primer contacto sandbox.</div>';
+
+  dom('#ana2Decisions').innerHTML = decisions.length ? decisions.slice(0, 12).map((decision) => `
+    <article class="decision-row">
+      <div>
+        <strong>${escapeHtml(ana2ActionLabels[decision.action] || decision.action)}</strong>
+        <span>${escapeHtml(decision.reason || '')}</span>
+      </div>
+      <div class="mini-pills">
+        ${statusPill(decision.qualified)}
+        <small>${escapeHtml(decision.channel)} · ${new Date(decision.created_at).toLocaleString()}</small>
+      </div>
+    </article>
+  `).join('') : '<div class="empty">Todavia no hay decisiones Ana 2.0.</div>';
+}
+
+function renderAna2Outbox() {
+  const outbox = state.data.ana2Outbox || [];
+  dom('#ana2Outbox').innerHTML = outbox.length ? outbox.map((item) => `
+    <article class="operator-card outbox-card">
+      <div class="operator-head">
+        <div>
+          <h3>${escapeHtml(item.channel.toUpperCase())} draft</h3>
+          <p>${escapeHtml(item.status)} · ${new Date(item.created_at).toLocaleString()}</p>
+        </div>
+        ${statusPill(item.status === 'draft')}
+      </div>
+      <form class="operator-form" data-outbox-id="${item.id}">
+        <label>Mensaje
+          <textarea name="body">${escapeHtml(item.body || '')}</textarea>
+        </label>
+        <div class="form-row">
+          <label>Status
+            <select name="status">
+              ${['draft', 'approved', 'blocked', 'sent'].map((status) => `<option value="${status}" ${selected(item.status, status)}>${status}</option>`).join('')}
+            </select>
+          </label>
+          <label>Scheduled for<input name="scheduled_for" value="${escapeHtml(item.scheduled_for || '')}" placeholder="opcional" /></label>
+        </div>
+        <button class="button primary">Guardar outbox</button>
+      </form>
+    </article>
+  `).join('') : '<div class="empty">Sin drafts todavia. Simula un inbound en Ana 2.0.</div>';
+}
+
 function renderTables() {
   renderTable('#testsList', state.data.tests || [], ['created_at', 'first_name', 'lead_type', 'channel', 'message', 'status']);
   renderTable('#logsList', [...(state.data.decisions || []), ...(state.data.errors || [])], ['created_at', 'channel', 'person_id', 'status', 'reason', 'message']);
@@ -552,7 +651,7 @@ function payloadFromForm(form) {
     if (payload[field]) payload[field] = payload[field].split(',').map((item) => item.trim()).filter(Boolean);
   });
 
-  ['min_budget', 'max_budget', 'max_auto_replies_per_conversation', 'delay_minutes', 'step_number', 'priority'].forEach((field) => {
+  ['min_budget', 'max_budget', 'max_auto_replies_per_conversation', 'delay_minutes', 'step_number', 'priority', 'budget', 'monthly_rent', 'lease_months'].forEach((field) => {
     if (payload[field] === '') payload[field] = null;
     else if (payload[field] !== undefined) payload[field] = Number(payload[field]);
   });
@@ -590,6 +689,8 @@ async function loadAll() {
   renderPrompts();
   renderProviders();
   renderSlack();
+  renderAna2();
+  renderAna2Outbox();
   renderTables();
   setStatus(true, 'Sistema cargado');
 }
@@ -626,6 +727,42 @@ function wireEvents() {
   });
 
   document.body.addEventListener('submit', async (event) => {
+    if (event.target.id === 'ana2ContactForm') {
+      event.preventDefault();
+      if (!(await confirmChange('Crear o actualizar este contacto sandbox de Ana 2.0.'))) return;
+      await api('/api/ana2/contacts', {
+        method: 'POST',
+        body: JSON.stringify(payloadFromForm(event.target)),
+      });
+      await loadAll();
+      return;
+    }
+
+    if (event.target.id === 'ana2MessageForm') {
+      event.preventDefault();
+      const payload = payloadFromForm(event.target);
+      if (!payload.contact_id) return;
+      const result = await api(`/api/ana2/contacts/${payload.contact_id}/messages`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      renderDecision('#ana2Decision', result.decision.decision || result.decision);
+      await loadAll();
+      return;
+    }
+
+    const outboxForm = event.target.closest('form[data-outbox-id]');
+    if (outboxForm) {
+      event.preventDefault();
+      if (!(await confirmChange('Guardar este draft de Ana 2.0.'))) return;
+      await api(`/api/ana2/outbox/${outboxForm.dataset.outboxId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payloadFromForm(outboxForm)),
+      });
+      await loadAll();
+      return;
+    }
+
     const createForm = event.target.closest('form[data-create-resource]');
     if (createForm) {
       event.preventDefault();

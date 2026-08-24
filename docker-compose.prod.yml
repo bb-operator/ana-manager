@@ -7,6 +7,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       MANAGER_BASIC_USER: ${MANAGER_BASIC_USER}
       MANAGER_BASIC_PASSWORD: ${MANAGER_BASIC_PASSWORD}
+      N8N_SHARED_SECRET: ${N8N_SHARED_SECRET}
+      NODE_ENV: production
       PORT: "8080"
     labels:
       - traefik.enable=true

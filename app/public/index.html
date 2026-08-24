@@ -16,7 +16,9 @@
         </div>
       </div>
       <nav>
-        <button class="nav active" data-view="dashboard">Dashboard</button>
+        <button class="nav active" data-view="dashboard">Command</button>
+        <button class="nav" data-view="ana2">Ana 2.0</button>
+        <button class="nav" data-view="outbox">Outbox</button>
         <button class="nav" data-view="system">Sistema</button>
         <button class="nav" data-view="rules">Reglas</button>
         <button class="nav" data-view="cadences">Cadencias</button>
@@ -35,9 +37,9 @@
     <main class="workspace">
       <header class="hero">
         <div>
-          <p class="kicker">Control operativo</p>
-          <h1>Ana System Manager</h1>
-          <p class="hero-copy">Administra reglas, cadencias, prompts, proveedores y pruebas sin entrar a n8n.</p>
+          <p class="kicker">Ana 2.0 command center</p>
+          <h1>Controla a Ana sin perseguir nodos</h1>
+          <p class="hero-copy">Sistema paralelo para probar contactos, ver decisiones, controlar cadencias y preparar la migracion sin tocar produccion.</p>
         </div>
         <div class="hero-actions">
           <button id="seedButton" class="button secondary">Inicializar defaults</button>
@@ -91,6 +93,111 @@
           </div>
           <div id="workflowMap" class="workflow-grid"></div>
         </article>
+      </section>
+
+      <section id="ana2" class="view">
+        <div class="section-title">
+          <h2>Ana 2.0 Sandbox</h2>
+          <p>Este modulo no toca contactos reales. Crea un lead test, simula mensajes y revisa exactamente por que Ana decide responder, parar o mandar a review.</p>
+        </div>
+        <div class="layout two">
+          <article class="panel command-panel">
+            <div class="panel-head">
+              <div>
+                <p class="kicker">Nuevo contacto test</p>
+                <h2>Crear lead sandbox</h2>
+              </div>
+            </div>
+            <form id="ana2ContactForm" class="form">
+              <div class="form-row">
+                <label>Nombre<input name="name" value="Jose Test" required /></label>
+                <label>Person ID / test ID<input name="person_id" value="sandbox-jose" required /></label>
+              </div>
+              <div class="form-row">
+                <label>Email<input name="email" value="jose@blackbookproperties.com" /></label>
+                <label>Telefono<input name="phone" placeholder="7865550000" /></label>
+              </div>
+              <div class="form-row">
+                <label>Tipo
+                  <select name="lead_type">
+                    <option value="buyer">Buyer</option>
+                    <option value="seller">Seller</option>
+                    <option value="renter" selected>Renter</option>
+                    <option value="landlord">Landlord</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
+                </label>
+                <label>Trigger tag<input name="trigger_tag" value="Ana 2.0 Test" /></label>
+              </div>
+              <div class="form-row">
+                <label>Budget compra/venta<input name="budget" type="number" placeholder="opcional" /></label>
+                <label>Renta mensual<input name="monthly_rent" type="number" value="3500" /></label>
+              </div>
+              <div class="form-row">
+                <label>Lease months<input name="lease_months" type="number" value="3" /></label>
+                <label>Area<input name="location_preference" value="Miami / Brickell" /></label>
+              </div>
+              <label>Perfil / contexto<textarea name="profile">Testing Ana 2.0 decision engine without touching real production leads.</textarea></label>
+              <button class="button primary">Crear / actualizar contacto test</button>
+            </form>
+          </article>
+
+          <article class="panel command-panel">
+            <div class="panel-head">
+              <div>
+                <p class="kicker">Simulador</p>
+                <h2>Enviar inbound a Ana 2.0</h2>
+              </div>
+            </div>
+            <form id="ana2MessageForm" class="form">
+              <label>Contacto
+                <select id="ana2ContactSelect" name="contact_id"></select>
+              </label>
+              <div class="form-row">
+                <label>Canal
+                  <select name="channel">
+                    <option value="email">Email</option>
+                    <option value="sms">SMS</option>
+                    <option value="call">Call</option>
+                  </select>
+                </label>
+                <label>Modo<input name="mode" value="sandbox" readonly /></label>
+              </div>
+              <label>Mensaje inbound<textarea name="body">I need a condo rental for 2 or 3 months from January to March.</textarea></label>
+              <button class="button primary">Evaluar con Ana 2.0</button>
+            </form>
+            <div id="ana2Decision" class="decision-card muted-card">Esperando simulacion.</div>
+          </article>
+        </div>
+
+        <div class="layout two">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Contactos Ana 2.0</h2>
+                <p>Solo sandbox hasta que activemos el tag real.</p>
+              </div>
+            </div>
+            <div id="ana2Contacts" class="stack"></div>
+          </article>
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Decision log</h2>
+                <p>La razon exacta de cada decision.</p>
+              </div>
+            </div>
+            <div id="ana2Decisions" class="stack"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="outbox" class="view">
+        <div class="section-title">
+          <h2>Outbox Ana 2.0</h2>
+          <p>Todo lo que Ana generaria queda como draft primero. En sandbox no se envia a proveedores reales.</p>
+        </div>
+        <div id="ana2Outbox" class="stack large"></div>
       </section>
 
       <section id="system" class="view">
