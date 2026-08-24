@@ -194,13 +194,27 @@ async function seedDefaults() {
   `);
   await pool.query(`
     INSERT INTO asm_cadence_steps (cadence_id, step_number, channel, delay_minutes, prompt_key, stop_if)
-    SELECT id, 2, 'email', 60, 'first_touch_email', '{"replied":true,"qualified":true}'::jsonb FROM asm_cadences
-    ON CONFLICT (cadence_id, step_number) DO NOTHING
+    SELECT id, 2, 'sms', 1440, 'first_touch_sms', '{"replied":true,"qualified":true}'::jsonb FROM asm_cadences
+    ON CONFLICT (cadence_id, step_number) DO UPDATE SET
+      channel = EXCLUDED.channel,
+      delay_minutes = EXCLUDED.delay_minutes,
+      prompt_key = EXCLUDED.prompt_key,
+      stop_if = EXCLUDED.stop_if
+    WHERE asm_cadence_steps.channel = 'email'::asm_channel
+      AND asm_cadence_steps.delay_minutes = 60
+      AND asm_cadence_steps.prompt_key = 'first_touch_email'
   `);
   await pool.query(`
     INSERT INTO asm_cadence_steps (cadence_id, step_number, channel, delay_minutes, prompt_key, stop_if)
-    SELECT id, 3, 'call', 1440, 'call_result_decision', '{"replied":true,"qualified":true,"no_call":true}'::jsonb FROM asm_cadences
-    ON CONFLICT (cadence_id, step_number) DO NOTHING
+    SELECT id, 3, 'email', 2880, 'first_touch_email', '{"replied":true,"qualified":true,"human_review":true}'::jsonb FROM asm_cadences
+    ON CONFLICT (cadence_id, step_number) DO UPDATE SET
+      channel = EXCLUDED.channel,
+      delay_minutes = EXCLUDED.delay_minutes,
+      prompt_key = EXCLUDED.prompt_key,
+      stop_if = EXCLUDED.stop_if
+    WHERE asm_cadence_steps.channel = 'call'::asm_channel
+      AND asm_cadence_steps.delay_minutes = 1440
+      AND asm_cadence_steps.prompt_key = 'call_result_decision'
   `);
 }
 
@@ -329,6 +343,16 @@ function normalizeJsonFields(payload) {
   return payload;
 }
 
+function slugify(value) {
+  return String(value || 'item')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 48) || 'item';
+}
+
 function castForField(field) {
   const casts = {
     actions: '::asm_rule_action[]',
@@ -391,7 +415,7 @@ app.get('/api/dashboard', async (_req, res, next) => {
       cadenceSteps,
     ] = await Promise.all([
       pool.query('select * from asm_emergency_controls order by scope, label_es'),
-      pool.query('select * from asm_rules order by priority asc limit 8'),
+      pool.query('select * from asm_rules order by priority asc, name_es asc'),
       pool.query('select * from asm_cadences order by lead_type asc'),
       pool.query('select * from asm_providers order by kind, name'),
       pool.query('select * from asm_slack_routes order by name'),
@@ -481,6 +505,66 @@ app.get('/api/:resource', async (req, res, next) => {
 
     const result = await pool.query(`select * from ${config.table} order by ${config.order}`);
     res.json(normalizeRows(result.rows));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/:resource', async (req, res, next) => {
+  try {
+    const config = resources[req.params.resource];
+    if (!config) return next();
+
+    const defaults = {
+      rules: {
+        key: `${slugify(req.body.name_es || req.body.name_en || 'custom_rule')}_${Date.now()}`,
+        name_en: req.body.name_en || req.body.name_es || 'Custom rule',
+        name_es: req.body.name_es || req.body.name_en || 'Regla personalizada',
+        enabled: true,
+        priority: 90,
+        severity: 'medium',
+        applies_to_channels: ['sms', 'email', 'call'],
+        applies_to_lead_types: ['buyer', 'seller', 'renter', 'landlord'],
+        conditions: { phrases: [] },
+        actions: ['human_review'],
+        confirmation_required: true,
+        notes_en: '',
+        notes_es: '',
+      },
+      prompts: {
+        key: `${slugify(req.body.name_es || req.body.name_en || 'custom_prompt')}_${Date.now()}`,
+        name_en: req.body.name_en || req.body.name_es || 'Custom prompt',
+        name_es: req.body.name_es || req.body.name_en || 'Prompt personalizado',
+        channel: req.body.channel || 'sms',
+        version: 1,
+        enabled: true,
+        prompt_text: req.body.prompt_text || 'Write the prompt instructions here.',
+        output_contract: { format: 'text' },
+      },
+      slack: {
+        name: `${slugify(req.body.channel_label || 'custom_slack_route')}_${Date.now()}`,
+        enabled: true,
+        lead_types: ['buyer', 'seller'],
+        event_types: ['qualified', 'handoff'],
+        webhook_secret_key: req.body.webhook_secret_key || 'SLACK_WEBHOOK_SECRET_KEY',
+        channel_label: req.body.channel_label || 'New Slack Channel',
+        notes: req.body.notes || '',
+      },
+    };
+
+    const payload = normalizeJsonFields(pickPayload({ ...(defaults[req.params.resource] || {}), ...req.body }, config.fields));
+    const entries = Object.entries(payload);
+    if (!entries.length) return res.status(400).json({ error: 'No allowed fields provided' });
+
+    const columns = entries.map(([field]) => field).join(', ');
+    const placeholders = entries.map(([field], index) => `$${index + 1}${castForField(field)}`).join(', ');
+    const values = entries.map(([, value]) => value);
+    const result = await pool.query(
+      `insert into ${config.table} (${columns}) values (${placeholders}) returning *`,
+      values
+    );
+
+    res.json(normalizeRow(result.rows[0]));
   } catch (error) {
     next(error);
   }

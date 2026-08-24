@@ -41,6 +41,21 @@ const actionOptions = [
   ['allow_reply', 'Permitir respuesta'],
 ];
 
+const channelOptions = [
+  ['sms', 'SMS'],
+  ['email', 'Email'],
+  ['call', 'Call'],
+];
+
+const promptOptions = [
+  ['sms_inbound_decision', 'Decision SMS entrante'],
+  ['email_inbound_decision', 'Decision email entrante'],
+  ['call_result_decision', 'Decision llamada'],
+  ['first_touch_sms', 'Primer toque SMS'],
+  ['first_touch_email', 'Primer toque email'],
+  ['airbnb_short_term_email', 'Airbnb / corto plazo'],
+];
+
 const dom = (selector) => document.querySelector(selector);
 const domAll = (selector) => [...document.querySelectorAll(selector)];
 
@@ -97,12 +112,33 @@ function checked(values, value) {
   return values?.includes(value) ? 'checked' : '';
 }
 
+function selected(current, value) {
+  return current === value ? 'selected' : '';
+}
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;');
+}
+
+function cadenceStepLabel(stepNumber) {
+  const labels = {
+    1: 'Dia 1',
+    2: 'Dia 2',
+    3: 'Salida final',
+  };
+  return labels[Number(stepNumber)] || `Paso ${stepNumber}`;
+}
+
+function delayLabel(minutes) {
+  const value = Number(minutes || 0);
+  if (value === 0) return 'Inmediato';
+  if (value % 1440 === 0) return `${value / 1440} dia${value / 1440 === 1 ? '' : 's'}`;
+  if (value % 60 === 0) return `${value / 60} hora${value / 60 === 1 ? '' : 's'}`;
+  return `${value} min`;
 }
 
 function renderDecision(target, decision) {
@@ -197,7 +233,39 @@ function renderSystem() {
 }
 
 function renderRules() {
-  dom('#ruleCards').innerHTML = state.data.rules.map((rule) => `
+  const createCard = `
+    <article class="operator-card create-card">
+      <div class="operator-head">
+        <div>
+          <h3>Nueva regla</h3>
+          <p>Crea una condicion simple que Ana pueda evaluar antes de responder.</p>
+        </div>
+      </div>
+      <form class="operator-form" data-create-resource="rules">
+        <div class="form-row">
+          <label>Nombre de la regla<input name="name_es" placeholder="Ej: Lead quiere tour hoy" required /></label>
+          <label>Prioridad<input name="priority" type="number" value="90" /></label>
+        </div>
+        <label>Frases / señales separadas por coma
+          <textarea name="phrases" placeholder="tour today, showing, quiero ver la propiedad"></textarea>
+        </label>
+        <div class="action-grid">
+          ${actionOptions.map(([value, label]) => `
+            <label class="check-chip">
+              <input type="checkbox" name="actions" value="${value}" ${checked(['human_review'], value)} />
+              <span>${label}</span>
+            </label>
+          `).join('')}
+        </div>
+        <div class="form-footer">
+          <span>La regla queda activa y con confirmacion requerida.</span>
+          <button class="button primary">Crear regla</button>
+        </div>
+      </form>
+    </article>
+  `;
+
+  const cards = state.data.rules.map((rule) => `
     <article class="operator-card">
       <div class="operator-head">
         <div>
@@ -228,6 +296,8 @@ function renderRules() {
       </form>
     </article>
   `).join('');
+
+  dom('#ruleCards').innerHTML = createCard + cards;
 }
 
 function renderCadences() {
@@ -237,13 +307,13 @@ function renderCadences() {
     return groups;
   }, {});
   dom('#cadenceCards').innerHTML = state.data.cadences.map((cadence) => {
-    const steps = stepsByCadence[cadence.id] || [];
+    const steps = (stepsByCadence[cadence.id] || []).sort((a, b) => a.step_number - b.step_number);
     return `
       <article class="operator-card">
         <div class="operator-head">
           <div>
             <h3>${cadence.lead_type.toUpperCase()}</h3>
-            <p>${escapeHtml(cadence.name_es || cadence.name_en)}</p>
+            <p>${escapeHtml(cadence.name_es || cadence.name_en)} · 3 momentos reales: Dia 1, Dia 2 y salida final.</p>
           </div>
           <label class="toggle">
             <input type="checkbox" data-resource="cadences" data-id="${cadence.id}" data-field="enabled" ${cadence.enabled ? 'checked' : ''} />
@@ -256,28 +326,71 @@ function renderCadences() {
             <label>Budget máximo<input name="max_budget" type="number" value="${cadence.max_budget || ''}" placeholder="sin máximo" /></label>
           </div>
           <div class="budget-note">Rango actual: ${money(cadence.min_budget)} a ${money(cadence.max_budget)}</div>
-          <div class="step-list">
-            ${steps.map((step) => `
-              <div class="step-row">
-                <strong>Step ${step.step_number}</strong>
-                <span>${step.channel.toUpperCase()}</span>
-                <span>${step.delay_minutes === 0 ? 'Inmediato' : `${step.delay_minutes} min`}</span>
-                ${statusPill(step.enabled)}
-              </div>
-            `).join('') || '<p class="empty">Sin pasos todavía.</p>'}
-          </div>
           <div class="form-footer">
             <span>Stop: replied, qualified, handed off, review</span>
             <button class="button primary">Guardar cadencia</button>
           </div>
         </form>
+        <div class="step-list">
+          ${steps.map((step) => `
+            <form class="step-editor" data-resource="cadenceSteps" data-id="${step.id}">
+              <div>
+                <strong>${cadenceStepLabel(step.step_number)}</strong>
+                <small>${delayLabel(step.delay_minutes)} · ${step.channel.toUpperCase()}</small>
+              </div>
+              <label>Canal
+                <select name="channel">
+                  ${channelOptions.map(([value, label]) => `<option value="${value}" ${selected(step.channel, value)}>${label}</option>`).join('')}
+                </select>
+              </label>
+              <label>Delay minutos
+                <input name="delay_minutes" type="number" value="${step.delay_minutes || 0}" />
+              </label>
+              <label>Prompt
+                <select name="prompt_key">
+                  ${promptOptions.map(([value, label]) => `<option value="${value}" ${selected(step.prompt_key, value)}>${label}</option>`).join('')}
+                </select>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" data-resource="cadenceSteps" data-id="${step.id}" data-field="enabled" ${step.enabled ? 'checked' : ''} />
+                <span></span>
+              </label>
+              <button class="button secondary">Guardar paso</button>
+            </form>
+          `).join('') || '<p class="empty">Sin pasos todavia. Inicializa defaults para crear Dia 1, Dia 2 y salida final.</p>'}
+        </div>
       </article>
     `;
   }).join('');
 }
 
 function renderPrompts() {
-  dom('#promptCards').innerHTML = state.data.prompts.map((prompt) => `
+  const createCard = `
+    <article class="operator-card create-card">
+      <div class="operator-head">
+        <div>
+          <h3>Nuevo prompt</h3>
+          <p>Crea un texto reusable para SMS, email, llamada o reglas del sistema.</p>
+        </div>
+      </div>
+      <form class="operator-form" data-create-resource="prompts">
+        <div class="form-row">
+          <label>Nombre<input name="name_es" placeholder="Ej: Follow-up dia 2 renter" required /></label>
+          <label>Canal
+            <select name="channel">
+              ${channelOptions.map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}
+            </select>
+          </label>
+        </div>
+        <label>Prompt
+          <textarea name="prompt_text" class="prompt-box" placeholder="Escribe aqui la instruccion exacta que Ana debe usar."></textarea>
+        </label>
+        <button class="button primary">Crear prompt</button>
+      </form>
+    </article>
+  `;
+
+  const cards = state.data.prompts.map((prompt) => `
     <article class="operator-card">
       <div class="operator-head">
         <div>
@@ -300,6 +413,8 @@ function renderPrompts() {
       </form>
     </article>
   `).join('');
+
+  dom('#promptCards').innerHTML = createCard + cards;
 }
 
 function renderProviders() {
@@ -329,6 +444,7 @@ function renderProviders() {
         </label>
       </div>
       <form class="operator-form" data-resource="providers" data-id="${provider.id}">
+        <label>Nombre visible<input name="name" value="${escapeHtml(provider.name)}" /></label>
         <label>Notas<textarea name="notes">${escapeHtml(provider.notes || '')}</textarea></label>
         <button class="button primary">Guardar proveedor</button>
       </form>
@@ -337,7 +453,30 @@ function renderProviders() {
 }
 
 function renderSlack() {
-  dom('#slackCards').innerHTML = state.data.slack.map((route) => `
+  const createCard = `
+    <article class="operator-card create-card">
+      <div class="operator-head">
+        <div>
+          <h3>Nueva ruta Slack</h3>
+          <p>Define a donde van qualified, handoff, errores o revision humana.</p>
+        </div>
+      </div>
+      <form class="operator-form" data-create-resource="slack">
+        <div class="form-row">
+          <label>Nombre visible<input name="channel_label" placeholder="Buyer/Seller Channel" required /></label>
+          <label>Webhook secret/env key<input name="webhook_secret_key" placeholder="SLACK_BUYER_SELLER_WEBHOOK" required /></label>
+        </div>
+        <div class="form-row">
+          <label>Lead types<input name="lead_types" value="buyer, seller" /></label>
+          <label>Eventos<input name="event_types" value="qualified, handoff" /></label>
+        </div>
+        <label>Notas<textarea name="notes" placeholder="Para que usamos este canal."></textarea></label>
+        <button class="button primary">Crear ruta Slack</button>
+      </form>
+    </article>
+  `;
+
+  const cards = state.data.slack.map((route) => `
     <article class="operator-card">
       <div class="operator-head">
         <div>
@@ -354,12 +493,17 @@ function renderSlack() {
           <label>Nombre visible<input name="channel_label" value="${escapeHtml(route.channel_label || '')}" /></label>
           <label>Lead types<input name="lead_types" value="${escapeHtml(toArray(route.lead_types).join(', '))}" /></label>
         </div>
-        <label>Eventos<input name="event_types" value="${escapeHtml(toArray(route.event_types).join(', '))}" /></label>
+        <div class="form-row">
+          <label>Eventos<input name="event_types" value="${escapeHtml(toArray(route.event_types).join(', '))}" /></label>
+          <label>Webhook secret/env key<input name="webhook_secret_key" value="${escapeHtml(route.webhook_secret_key || '')}" /></label>
+        </div>
         <label>Notas<textarea name="notes">${escapeHtml(route.notes || '')}</textarea></label>
         <button class="button primary">Guardar Slack route</button>
       </form>
     </article>
   `).join('');
+
+  dom('#slackCards').innerHTML = createCard + cards;
 }
 
 function renderTables() {
@@ -394,8 +538,9 @@ function payloadFromForm(form) {
   const data = new FormData(form);
   const payload = {};
   for (const [key, value] of data.entries()) payload[key] = value;
+  const resource = form.dataset.resource || form.dataset.createResource;
 
-  if (form.dataset.resource === 'rules') {
+  if (resource === 'rules') {
     const actions = data.getAll('actions');
     const phrases = String(payload.phrases || '').split(',').map((item) => item.trim()).filter(Boolean);
     delete payload.phrases;
@@ -407,7 +552,7 @@ function payloadFromForm(form) {
     if (payload[field]) payload[field] = payload[field].split(',').map((item) => item.trim()).filter(Boolean);
   });
 
-  ['min_budget', 'max_budget', 'max_auto_replies_per_conversation'].forEach((field) => {
+  ['min_budget', 'max_budget', 'max_auto_replies_per_conversation', 'delay_minutes', 'step_number', 'priority'].forEach((field) => {
     if (payload[field] === '') payload[field] = null;
     else if (payload[field] !== undefined) payload[field] = Number(payload[field]);
   });
@@ -418,6 +563,13 @@ function payloadFromForm(form) {
 async function patch(resource, id, payload) {
   await api(`/api/${resource}/${id}`, {
     method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+async function create(resource, payload) {
+  await api(`/api/${resource}`, {
+    method: 'POST',
     body: JSON.stringify(payload),
   });
 }
@@ -474,6 +626,16 @@ function wireEvents() {
   });
 
   document.body.addEventListener('submit', async (event) => {
+    const createForm = event.target.closest('form[data-create-resource]');
+    if (createForm) {
+      event.preventDefault();
+      if (!(await confirmChange('Crear este nuevo control en Ana Manager.'))) return;
+      await create(createForm.dataset.createResource, payloadFromForm(createForm));
+      createForm.reset();
+      await loadAll();
+      return;
+    }
+
     const form = event.target.closest('form[data-resource]');
     if (!form) return;
     event.preventDefault();
