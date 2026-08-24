@@ -318,7 +318,7 @@ function workflowCard(row) {
         ${checkbox('enabled', 'Enabled', row.enabled)}
         ${input('migration_status', 'Migration status', row.migration_status)}
       </div>
-      ${textarea('current_role', 'Current role', row.current_role)}
+      ${textarea('role_description', 'Current role', row.role_description)}
       ${jsonField('control_surface', 'Control surface JSON', row.control_surface)}
       ${textarea('notes', 'Notes', row.notes || '')}
       <button class="primary">${t('save')}</button>

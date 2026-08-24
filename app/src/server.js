@@ -52,7 +52,7 @@ const resources = {
   },
   workflows: {
     table: 'asm_workflow_modules',
-    fields: ['name', 'n8n_workflow_id', 'module_type', 'enabled', 'current_role', 'migration_status', 'control_surface', 'notes'],
+    fields: ['name', 'n8n_workflow_id', 'module_type', 'enabled', 'role_description', 'migration_status', 'control_surface', 'notes'],
     order: 'module_type ASC, name ASC',
   },
 };
@@ -127,7 +127,7 @@ const defaultSeeds = {
     ON CONFLICT (key) DO NOTHING
   `,
   workflows: `
-    INSERT INTO asm_workflow_modules (key, name, n8n_workflow_id, module_type, enabled, current_role, migration_status, control_surface, notes) VALUES
+    INSERT INTO asm_workflow_modules (key, name, n8n_workflow_id, module_type, enabled, role_description, migration_status, control_surface, notes) VALUES
     ('fub_ingestion', 'FUB Ingestion (General uses)', '7a8zKvuSGdvSdA3j', 'intake', true, 'Polls Follow Up Boss events, filters inquiries, registers leads in queue, applies Ana Auto tag.', 'observed', '{"controls":["lead_type_detection","budget_cap","auto_tag","non_lead_detection"]}', 'Current entry point for new FUB inquiries.'),
     ('dispatcher', 'BBP — Ana Motor de Seguimiento (Dispatcher)', 'tDAyougPHt31wsXM', 'dispatcher', true, 'Runs every 20 minutes, finds due leads, advances rounds, sends closing email on round 3.', 'observed', '{"controls":["schedule","due_formula","round_rules","closing_email"]}', 'Cadence orchestration layer.'),
     ('cadence_runner', 'BBP — Ana Cadence Runner', 'FSdIUZCQ3sB9stpa', 'cadence', true, 'Executes touch attempts by call, SMS and email; applies Ana touched tag after first real touch.', 'observed', '{"controls":["call_hours","sms_allowed","first_touch","ana_touched","recap_email"]}', 'Largest flow; primary target for centralizing cadence config.'),
@@ -167,7 +167,7 @@ async function ensureRuntimeSchema() {
       n8n_workflow_id text,
       module_type text NOT NULL,
       enabled boolean NOT NULL DEFAULT true,
-      current_role text NOT NULL,
+      role_description text NOT NULL,
       migration_status text NOT NULL DEFAULT 'observed',
       control_surface jsonb NOT NULL DEFAULT '{}'::jsonb,
       notes text,

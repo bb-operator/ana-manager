@@ -218,7 +218,7 @@ CREATE TABLE asm_workflow_modules (
   n8n_workflow_id text,
   module_type text NOT NULL,
   enabled boolean NOT NULL DEFAULT true,
-  current_role text NOT NULL,
+  role_description text NOT NULL,
   migration_status text NOT NULL DEFAULT 'observed',
   control_surface jsonb NOT NULL DEFAULT '{}'::jsonb,
   notes text,
