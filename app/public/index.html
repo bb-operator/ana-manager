@@ -14,11 +14,13 @@
       </div>
       <nav>
         <button class="nav-item active" data-view="dashboard">Dashboard</button>
+        <button class="nav-item" data-view="workflows">Automatizaciones</button>
         <button class="nav-item" data-view="rules">Reglas</button>
         <button class="nav-item" data-view="cadences">Cadencias</button>
         <button class="nav-item" data-view="prompts">Prompts</button>
         <button class="nav-item" data-view="providers">Proveedores</button>
         <button class="nav-item" data-view="slack">Slack Alerts</button>
+        <button class="nav-item" data-view="sandbox">Sandbox</button>
         <button class="nav-item" data-view="logs">Logs</button>
         <button class="nav-item danger" data-view="emergency">Emergency Stop</button>
       </nav>
@@ -33,6 +35,7 @@
         </div>
         <div class="top-actions">
           <button id="languageToggle" class="ghost">EN</button>
+          <button id="seedButton" class="ghost">Cargar defaults</button>
           <button id="refreshButton" class="primary">Actualizar</button>
         </div>
       </header>
@@ -71,11 +74,25 @@
           </article>
           <article class="card">
             <div class="card-head">
-              <h2>Errores Recientes</h2>
+              <h2>Automatizaciones n8n</h2>
             </div>
-            <div id="errorsPreview" class="table-wrap"></div>
+            <div id="workflowsPreview" class="stack"></div>
           </article>
         </div>
+        <article class="card">
+          <div class="card-head">
+            <h2>Errores Recientes</h2>
+          </div>
+          <div id="errorsPreview" class="table-wrap"></div>
+        </article>
+      </section>
+
+      <section id="workflows" class="view">
+        <div class="section-head">
+          <h2>Automatizaciones</h2>
+          <p>Mapa del sistema actual en n8n y que partes queremos controlar desde este manager.</p>
+        </div>
+        <div id="workflowsList" class="editor-list"></div>
       </section>
 
       <section id="rules" class="view">
@@ -129,6 +146,62 @@
         <div id="logsList" class="table-wrap"></div>
       </section>
 
+      <section id="sandbox" class="view">
+        <div class="section-head">
+          <h2>Sandbox</h2>
+          <p>Crea contactos de prueba y mira que decision tomaria Ana sin tocar Twilio, FUB ni produccion.</p>
+        </div>
+        <div class="grid two">
+          <article class="card">
+            <div class="card-head">
+              <h2>Nuevo Test</h2>
+            </div>
+            <form id="sandboxForm">
+              <div class="form-grid">
+                <label>First name
+                  <input name="first_name" value="Richard" />
+                </label>
+                <label>Lead type
+                  <select name="lead_type">
+                    <option value="buyer">buyer</option>
+                    <option value="seller">seller</option>
+                    <option value="renter">renter</option>
+                    <option value="landlord">landlord</option>
+                    <option value="unknown">unknown</option>
+                  </select>
+                </label>
+                <label>Channel
+                  <select name="channel">
+                    <option value="sms">sms</option>
+                    <option value="email">email</option>
+                    <option value="call">call</option>
+                  </select>
+                </label>
+                <label>Budget
+                  <input name="budget" type="number" placeholder="optional" />
+                </label>
+              </div>
+              <label>Message
+                <textarea name="message">Have an agent call me asap</textarea>
+              </label>
+              <button class="primary">Evaluar y guardar</button>
+            </form>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h2>Decision</h2>
+            </div>
+            <pre id="sandboxDecision" class="decision-box">{}</pre>
+          </article>
+        </div>
+        <article class="card">
+          <div class="card-head">
+            <h2>Tests Recientes</h2>
+          </div>
+          <div id="testsList" class="table-wrap"></div>
+        </article>
+      </section>
+
       <section id="emergency" class="view">
         <div class="section-head danger-text">
           <h2>Emergency Stop</h2>
@@ -152,4 +225,3 @@
     <script src="/app.js" type="module"></script>
   </body>
 </html>
-

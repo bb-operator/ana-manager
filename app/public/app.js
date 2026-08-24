@@ -32,6 +32,7 @@ const resourceMap = {
   channels: 'channels',
   slack: 'slack',
   emergency: 'emergency',
+  workflows: 'workflows',
 };
 
 function t(key) {
@@ -104,8 +105,10 @@ function renderDashboard() {
   renderPreview('#cadencesPreview', data.cadences, (row) => text(row, 'name'), (row) => `${row.lead_type} · ${row.enabled ? t('enabled') : t('disabled')}`);
   renderPreview('#providersPreview', data.providers.slice(0, 5), (row) => row.name, (row) => `${row.kind} · ${row.enabled ? t('enabled') : t('disabled')}`);
   renderPreview('#slackPreview', data.slack, (row) => row.channel_label || row.name, (row) => `${row.lead_types?.join(', ') || ''}`);
+  renderPreview('#workflowsPreview', data.workflows || [], (row) => row.name, (row) => `${row.module_type} · ${row.migration_status}`);
   renderTable('#errorsPreview', data.errors, ['created_at', 'severity', 'component', 'message', 'resolved']);
   renderTable('#logsList', [...data.decisions, ...data.errors], ['created_at', 'channel', 'person_id', 'status', 'reason', 'message']);
+  renderTable('#testsList', data.tests || [], ['created_at', 'first_name', 'lead_type', 'channel', 'message', 'status']);
 }
 
 function renderTable(target, rows, fields) {
@@ -172,6 +175,7 @@ function renderEditable(resource, rows, target) {
     if (resource === 'channels') return channelCard(row);
     if (resource === 'slack') return slackCard(row);
     if (resource === 'emergency') return emergencyCard(row);
+    if (resource === 'workflows') return workflowCard(row);
     return '';
   }).join('');
 
@@ -300,6 +304,28 @@ function emergencyCard(row) {
   `);
 }
 
+function workflowCard(row) {
+  return card('workflows', row, `
+    <div class="row-between">
+      <div>
+        <h3>${row.name}</h3>
+        <p class="subtitle">${row.module_type} · n8n: ${row.n8n_workflow_id || 'none'}</p>
+      </div>
+      <span class="pill ${row.enabled ? '' : 'off'}">${row.enabled ? t('enabled') : t('disabled')}</span>
+    </div>
+    <form data-resource="workflows" data-id="${row.id}">
+      <div class="form-grid">
+        ${checkbox('enabled', 'Enabled', row.enabled)}
+        ${input('migration_status', 'Migration status', row.migration_status)}
+      </div>
+      ${textarea('current_role', 'Current role', row.current_role)}
+      ${jsonField('control_surface', 'Control surface JSON', row.control_surface)}
+      ${textarea('notes', 'Notes', row.notes || '')}
+      <button class="primary">${t('save')}</button>
+    </form>
+  `);
+}
+
 function card(_resource, _row, body) {
   return `<article class="editor-card">${body}</article>`;
 }
@@ -320,7 +346,13 @@ async function loadAll() {
     loadResource('providers', '#providersList'),
     loadResource('slack', '#slackList'),
     loadResource('emergency', '#emergencyList'),
+    loadResource('workflows', '#workflowsList'),
   ]);
+}
+
+async function loadTests() {
+  const tests = await api('/api/test-leads');
+  renderTable('#testsList', tests, ['created_at', 'first_name', 'lead_type', 'channel', 'message', 'status']);
 }
 
 function payloadFromForm(form) {
@@ -357,6 +389,23 @@ function wireEvents() {
   });
 
   qs('#refreshButton').addEventListener('click', loadAll);
+  qs('#seedButton').addEventListener('click', async () => {
+    const ok = await confirmChange('Esto cargara las reglas, prompts, cadencias y proveedores default si faltan.');
+    if (!ok) return;
+    await api('/api/seed-defaults', { method: 'POST', body: JSON.stringify({}) });
+    await loadAll();
+  });
+
+  qs('#sandboxForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const payload = payloadFromForm(event.target);
+    const result = await api('/api/test-leads', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    qs('#sandboxDecision').textContent = JSON.stringify(result.simulated_decision, null, 2);
+    await loadTests();
+  });
   qs('#languageToggle').addEventListener('click', () => {
     state.lang = state.lang === 'es' ? 'en' : 'es';
     localStorage.setItem('asm-lang', state.lang);
@@ -394,4 +443,3 @@ applyLanguage();
 loadAll().catch((error) => {
   document.body.insertAdjacentHTML('beforeend', `<pre style="margin-left:300px;color:#b00020">${error.message}</pre>`);
 });
-

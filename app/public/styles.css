@@ -321,6 +321,20 @@ table {
   font-size: 12px;
 }
 
+.decision-box {
+  min-height: 280px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  color: #d8f6e8;
+  background: #071b3a;
+  font-family: "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
 th,
 td {
   border-bottom: 1px solid var(--line);
@@ -375,4 +389,3 @@ dialog {
     flex-direction: column;
   }
 }
-

@@ -193,6 +193,39 @@ CREATE TABLE asm_eval_cases (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE asm_test_leads (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  first_name text,
+  last_name text,
+  person_id text,
+  phone text,
+  email text,
+  lead_type text NOT NULL DEFAULT 'unknown',
+  channel asm_channel NOT NULL DEFAULT 'sms',
+  message text NOT NULL,
+  budget numeric,
+  status text NOT NULL DEFAULT 'new',
+  simulated_decision jsonb NOT NULL DEFAULT '{}'::jsonb,
+  notes text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE asm_workflow_modules (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  key text NOT NULL UNIQUE,
+  name text NOT NULL,
+  n8n_workflow_id text,
+  module_type text NOT NULL,
+  enabled boolean NOT NULL DEFAULT true,
+  current_role text NOT NULL,
+  migration_status text NOT NULL DEFAULT 'observed',
+  control_surface jsonb NOT NULL DEFAULT '{}'::jsonb,
+  notes text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE OR REPLACE FUNCTION asm_touch_updated_at()
 RETURNS trigger AS $$
 BEGIN
@@ -210,6 +243,8 @@ CREATE TRIGGER trg_asm_rules_updated_at BEFORE UPDATE ON asm_rules FOR EACH ROW 
 CREATE TRIGGER trg_asm_cadences_updated_at BEFORE UPDATE ON asm_cadences FOR EACH ROW EXECUTE FUNCTION asm_touch_updated_at();
 CREATE TRIGGER trg_asm_cadence_steps_updated_at BEFORE UPDATE ON asm_cadence_steps FOR EACH ROW EXECUTE FUNCTION asm_touch_updated_at();
 CREATE TRIGGER trg_asm_eval_cases_updated_at BEFORE UPDATE ON asm_eval_cases FOR EACH ROW EXECUTE FUNCTION asm_touch_updated_at();
+CREATE TRIGGER trg_asm_test_leads_updated_at BEFORE UPDATE ON asm_test_leads FOR EACH ROW EXECUTE FUNCTION asm_touch_updated_at();
+CREATE TRIGGER trg_asm_workflow_modules_updated_at BEFORE UPDATE ON asm_workflow_modules FOR EACH ROW EXECUTE FUNCTION asm_touch_updated_at();
 
 INSERT INTO asm_system_settings (key, label_en, label_es, value, description_en, description_es) VALUES
 ('ui_language_default', 'Default UI Language', 'Idioma por defecto', '{"value":"es"}', 'Default manager language.', 'Idioma inicial del panel.'),
@@ -267,4 +302,3 @@ UNION ALL
 SELECT id, 2, 'email', 60, 'first_touch_email', '{"replied":true,"qualified":true}'::jsonb FROM asm_cadences
 UNION ALL
 SELECT id, 3, 'call', 1440, 'call_result_decision', '{"replied":true,"qualified":true,"no_call":true}'::jsonb FROM asm_cadences;
-
