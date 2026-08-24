@@ -55,6 +55,11 @@ const resources = {
     fields: ['name', 'n8n_workflow_id', 'module_type', 'enabled', 'role_description', 'migration_status', 'control_surface', 'notes'],
     order: 'module_type ASC, name ASC',
   },
+  cadenceSteps: {
+    table: 'asm_cadence_steps',
+    fields: ['cadence_id', 'step_number', 'channel', 'delay_minutes', 'prompt_key', 'enabled', 'stop_if'],
+    order: 'cadence_id ASC, step_number ASC',
+  },
 };
 
 const defaultSeeds = {
@@ -358,6 +363,7 @@ app.get('/api/dashboard', async (_req, res, next) => {
       decisions,
       tests,
       workflows,
+      cadenceSteps,
     ] = await Promise.all([
       pool.query('select * from asm_emergency_controls order by scope, label_es'),
       pool.query('select * from asm_rules order by priority asc limit 8'),
@@ -368,6 +374,7 @@ app.get('/api/dashboard', async (_req, res, next) => {
       pool.query('select * from asm_decision_logs order by created_at desc limit 8'),
       pool.query('select * from asm_test_leads order by created_at desc limit 8'),
       pool.query('select * from asm_workflow_modules order by module_type asc, name asc'),
+      pool.query('select * from asm_cadence_steps order by cadence_id asc, step_number asc'),
     ]);
 
     res.json({
@@ -380,6 +387,7 @@ app.get('/api/dashboard', async (_req, res, next) => {
       decisions: decisions.rows,
       tests: tests.rows,
       workflows: workflows.rows,
+      cadenceSteps: cadenceSteps.rows,
     });
   } catch (error) {
     next(error);

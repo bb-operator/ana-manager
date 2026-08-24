@@ -7,217 +7,207 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <aside class="sidebar">
+    <aside class="rail">
       <div class="brand">
-        <span>Ana System Manager</span>
-        <small>AI Lead Automation</small>
+        <span class="brand-mark">A</span>
+        <div>
+          <strong>Ana Manager</strong>
+          <small>Blackbook AI Ops</small>
+        </div>
       </div>
       <nav>
-        <button class="nav-item active" data-view="dashboard">Dashboard</button>
-        <button class="nav-item" data-view="workflows">Automatizaciones</button>
-        <button class="nav-item" data-view="rules">Reglas</button>
-        <button class="nav-item" data-view="cadences">Cadencias</button>
-        <button class="nav-item" data-view="prompts">Prompts</button>
-        <button class="nav-item" data-view="providers">Proveedores</button>
-        <button class="nav-item" data-view="slack">Slack Alerts</button>
-        <button class="nav-item" data-view="sandbox">Sandbox</button>
-        <button class="nav-item" data-view="logs">Logs</button>
-        <button class="nav-item danger" data-view="emergency">Emergency Stop</button>
+        <button class="nav active" data-view="dashboard">Dashboard</button>
+        <button class="nav" data-view="system">Sistema</button>
+        <button class="nav" data-view="rules">Reglas</button>
+        <button class="nav" data-view="cadences">Cadencias</button>
+        <button class="nav" data-view="prompts">Prompts</button>
+        <button class="nav" data-view="providers">Proveedores</button>
+        <button class="nav" data-view="slack">Slack</button>
+        <button class="nav" data-view="lab">Test Lab</button>
+        <button class="nav" data-view="logs">Logs</button>
       </nav>
+      <div class="rail-note">
+        <span id="syncDot"></span>
+        <p id="syncText">Cargando sistema...</p>
+      </div>
     </aside>
 
-    <main class="shell">
-      <header class="topbar">
+    <main class="workspace">
+      <header class="hero">
         <div>
-          <p class="eyebrow">Blackbook Properties</p>
-          <h1 data-i18n="title">Panel de Control de Ana</h1>
-          <p class="subtitle" data-i18n="subtitle">Control central para reglas, cadencias, prompts, canales y logs.</p>
+          <p class="kicker">Control operativo</p>
+          <h1>Ana System Manager</h1>
+          <p class="hero-copy">Administra reglas, cadencias, prompts, proveedores y pruebas sin entrar a n8n.</p>
         </div>
-        <div class="top-actions">
-          <button id="languageToggle" class="ghost">EN</button>
-          <button id="seedButton" class="ghost">Cargar defaults</button>
-          <button id="refreshButton" class="primary">Actualizar</button>
+        <div class="hero-actions">
+          <button id="seedButton" class="button secondary">Inicializar defaults</button>
+          <button id="refreshButton" class="button primary">Actualizar</button>
         </div>
       </header>
 
-      <section id="dashboard" class="view active-view">
-        <div class="status-row" id="statusRow"></div>
-        <div class="grid three">
-          <article class="card">
-            <div class="card-head">
-              <h2>Reglas Activas</h2>
-              <span id="rulesCount" class="pill">0</span>
+      <section id="dashboard" class="view active">
+        <div id="systemStrip" class="system-strip"></div>
+        <div class="metric-grid" id="metricGrid"></div>
+        <div class="layout two">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Reglas críticas</h2>
+                <p>Lo que evita que Ana siga cometiendo errores caros.</p>
+              </div>
+              <button class="link-button" data-jump="rules">Editar reglas</button>
             </div>
-            <div id="rulesPreview" class="stack"></div>
+            <div id="criticalRules" class="stack"></div>
           </article>
-          <article class="card">
-            <div class="card-head">
-              <h2>Cadencias</h2>
-              <span id="cadencesCount" class="pill">0</span>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Test rápido</h2>
+                <p>Prueba un mensaje sin tocar producción.</p>
+              </div>
+              <button class="link-button" data-jump="lab">Abrir lab</button>
             </div>
-            <div id="cadencesPreview" class="stack"></div>
-          </article>
-          <article class="card">
-            <div class="card-head">
-              <h2>Proveedores</h2>
-              <span id="providersCount" class="pill">0</span>
-            </div>
-            <div id="providersPreview" class="stack"></div>
-          </article>
-        </div>
-        <div class="grid two">
-          <article class="card">
-            <div class="card-head">
-              <h2>Slack Alerts</h2>
-            </div>
-            <div id="slackPreview" class="stack"></div>
-          </article>
-          <article class="card">
-            <div class="card-head">
-              <h2>Automatizaciones n8n</h2>
-            </div>
-            <div id="workflowsPreview" class="stack"></div>
+            <form id="quickTestForm" class="quick-test">
+              <select name="lead_type">
+                <option value="buyer">Buyer</option>
+                <option value="seller">Seller</option>
+                <option value="renter">Renter</option>
+                <option value="landlord">Landlord</option>
+              </select>
+              <textarea name="message">Have an agent call me asap</textarea>
+              <button class="button primary">Probar decisión</button>
+            </form>
+            <div id="quickDecision" class="decision-card muted-card">Esperando prueba.</div>
           </article>
         </div>
-        <article class="card">
-          <div class="card-head">
-            <h2>Errores Recientes</h2>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Mapa actual de automatizaciones</h2>
+              <p>Esto es lo que existe hoy en n8n y lo que vamos sacando hacia el manager.</p>
+            </div>
           </div>
-          <div id="errorsPreview" class="table-wrap"></div>
+          <div id="workflowMap" class="workflow-grid"></div>
         </article>
       </section>
 
-      <section id="workflows" class="view">
-        <div class="section-head">
-          <h2>Automatizaciones</h2>
-          <p>Mapa del sistema actual en n8n y que partes queremos controlar desde este manager.</p>
+      <section id="system" class="view">
+        <div class="section-title">
+          <h2>Sistema y Emergency Stop</h2>
+          <p>Apaga partes de Ana sin abrir n8n. Estos switches son el control principal.</p>
         </div>
-        <div id="workflowsList" class="editor-list"></div>
+        <div id="systemControls" class="control-grid"></div>
       </section>
 
       <section id="rules" class="view">
-        <div class="section-head">
-          <h2>Reglas</h2>
-          <p>Controla decisiones duras: handoff, stop, human review, qualified y bloqueos.</p>
+        <div class="section-title">
+          <h2>Reglas de decisión</h2>
+          <p>Edita condiciones y acciones con controles humanos. Ana debe obedecer esto antes de responder.</p>
         </div>
-        <div id="rulesList" class="editor-list"></div>
+        <div id="ruleCards" class="stack large"></div>
       </section>
 
       <section id="cadences" class="view">
-        <div class="section-head">
+        <div class="section-title">
           <h2>Cadencias</h2>
-          <p>Activa/desactiva cadencias y define presupuestos por tipo de lead.</p>
+          <p>Controla qué tipos de lead pasan, presupuestos y pasos de seguimiento.</p>
         </div>
-        <div id="cadencesList" class="editor-list"></div>
+        <div id="cadenceCards" class="stack large"></div>
       </section>
 
       <section id="prompts" class="view">
-        <div class="section-head">
+        <div class="section-title">
           <h2>Prompts</h2>
-          <p>Edita instrucciones de Ana desde un solo lugar.</p>
+          <p>Mensajes e instrucciones editables. Nada de JSON salvo que lo pidamos más adelante.</p>
         </div>
-        <div id="promptsList" class="editor-list"></div>
+        <div id="promptCards" class="stack large"></div>
       </section>
 
       <section id="providers" class="view">
-        <div class="section-head">
-          <h2>Canales y Proveedores</h2>
-          <p>Controla Twilio, Gmail, Retell, FUB, Airtable y futuros proveedores.</p>
+        <div class="section-title">
+          <h2>Canales y proveedores</h2>
+          <p>Twilio, Gmail, Retell, FUB, Airtable y futuros reemplazos.</p>
         </div>
-        <div class="grid two">
-          <div id="channelsList" class="editor-list"></div>
-          <div id="providersList" class="editor-list"></div>
+        <div class="layout two">
+          <div id="channelCards" class="stack large"></div>
+          <div id="providerCards" class="stack large"></div>
         </div>
       </section>
 
       <section id="slack" class="view">
-        <div class="section-head">
-          <h2>Slack Alerts</h2>
-          <p>Define rutas por tipo de lead y evento.</p>
+        <div class="section-title">
+          <h2>Slack routing</h2>
+          <p>Define qué tipo de lead y evento van a cada canal.</p>
         </div>
-        <div id="slackList" class="editor-list"></div>
+        <div id="slackCards" class="stack large"></div>
       </section>
 
-      <section id="logs" class="view">
-        <div class="section-head">
-          <h2>Logs</h2>
-          <p>Auditoria de decisiones, acciones y errores.</p>
+      <section id="lab" class="view">
+        <div class="section-title">
+          <h2>Test Lab</h2>
+          <p>Mete contactos/mensajes de prueba y mira qué haría Ana antes de tocar producción.</p>
         </div>
-        <div id="logsList" class="table-wrap"></div>
-      </section>
-
-      <section id="sandbox" class="view">
-        <div class="section-head">
-          <h2>Sandbox</h2>
-          <p>Crea contactos de prueba y mira que decision tomaria Ana sin tocar Twilio, FUB ni produccion.</p>
-        </div>
-        <div class="grid two">
-          <article class="card">
-            <div class="card-head">
-              <h2>Nuevo Test</h2>
-            </div>
-            <form id="sandboxForm">
-              <div class="form-grid">
-                <label>First name
-                  <input name="first_name" value="Richard" />
-                </label>
-                <label>Lead type
+        <div class="layout two lab-layout">
+          <article class="panel">
+            <h2>Contacto de prueba</h2>
+            <form id="sandboxForm" class="form">
+              <div class="form-row">
+                <label>Nombre<input name="first_name" value="Richard" /></label>
+                <label>Tipo
                   <select name="lead_type">
-                    <option value="buyer">buyer</option>
-                    <option value="seller">seller</option>
-                    <option value="renter">renter</option>
-                    <option value="landlord">landlord</option>
-                    <option value="unknown">unknown</option>
+                    <option value="buyer">Buyer</option>
+                    <option value="seller">Seller</option>
+                    <option value="renter">Renter</option>
+                    <option value="landlord">Landlord</option>
+                    <option value="unknown">Unknown</option>
                   </select>
-                </label>
-                <label>Channel
-                  <select name="channel">
-                    <option value="sms">sms</option>
-                    <option value="email">email</option>
-                    <option value="call">call</option>
-                  </select>
-                </label>
-                <label>Budget
-                  <input name="budget" type="number" placeholder="optional" />
                 </label>
               </div>
-              <label>Message
-                <textarea name="message">Have an agent call me asap</textarea>
-              </label>
-              <button class="primary">Evaluar y guardar</button>
+              <div class="form-row">
+                <label>Canal
+                  <select name="channel">
+                    <option value="sms">SMS</option>
+                    <option value="email">Email</option>
+                    <option value="call">Call</option>
+                  </select>
+                </label>
+                <label>Budget<input name="budget" type="number" placeholder="opcional" /></label>
+              </div>
+              <label>Mensaje<textarea name="message">Have an agent call me asap</textarea></label>
+              <button class="button primary">Evaluar y guardar test</button>
             </form>
           </article>
-          <article class="card">
-            <div class="card-head">
-              <h2>Decision</h2>
-            </div>
-            <pre id="sandboxDecision" class="decision-box">{}</pre>
+          <article class="panel">
+            <h2>Resultado</h2>
+            <div id="sandboxDecision" class="decision-card big">Todavía no hay decisión.</div>
           </article>
         </div>
-        <article class="card">
-          <div class="card-head">
-            <h2>Tests Recientes</h2>
+        <article class="panel">
+          <div class="panel-head">
+            <h2>Tests recientes</h2>
           </div>
-          <div id="testsList" class="table-wrap"></div>
+          <div id="testsList" class="table"></div>
         </article>
       </section>
 
-      <section id="emergency" class="view">
-        <div class="section-head danger-text">
-          <h2>Emergency Stop</h2>
-          <p>Apaga partes del sistema sin entrar a n8n.</p>
+      <section id="logs" class="view">
+        <div class="section-title">
+          <h2>Logs</h2>
+          <p>Auditoría de decisiones, tests y errores. Aquí sabremos qué pasó sin abrir mil ejecuciones.</p>
         </div>
-        <div id="emergencyList" class="editor-list"></div>
+        <div id="logsList" class="table"></div>
       </section>
     </main>
 
     <dialog id="confirmDialog">
       <form method="dialog" class="modal">
         <h3 id="confirmTitle">Confirmar cambio</h3>
-        <p id="confirmMessage">Estas a punto de modificar la configuracion de Ana.</p>
+        <p id="confirmMessage">Vas a cambiar una configuración de Ana.</p>
         <div class="modal-actions">
-          <button value="cancel" class="ghost">Cancelar</button>
-          <button value="confirm" class="primary">Confirmar</button>
+          <button value="cancel" class="button secondary">Cancelar</button>
+          <button value="confirm" class="button danger">Confirmar cambio</button>
         </div>
       </form>
     </dialog>
