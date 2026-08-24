@@ -16,7 +16,8 @@
         </div>
       </div>
       <nav>
-        <button class="nav active" data-view="dashboard">Command</button>
+        <button class="nav active" data-view="launch">Launch</button>
+        <button class="nav" data-view="dashboard">Command</button>
         <button class="nav" data-view="ana2">Ana 2.0</button>
         <button class="nav" data-view="outbox">Outbox</button>
         <button class="nav" data-view="system">System</button>
@@ -38,8 +39,8 @@
       <header class="hero">
         <div>
           <p class="kicker">Blackbook AI command center</p>
-          <h1>The control layer for Ana.</h1>
-          <p class="hero-copy">A separate operating system for testing leads, auditing decisions, tuning cadences, and migrating away from fragile n8n logic without touching production.</p>
+          <h1>Ana 2.0 operations, without the maze.</h1>
+          <p class="hero-copy">Tag one test contact in Follow Up Boss, let Ana 2.0 register it, draft the cadence, audit the decision, and keep production Ana untouched until you approve the switch.</p>
         </div>
         <div class="hero-actions">
           <button id="seedButton" class="button secondary">Initialize Defaults</button>
@@ -47,7 +48,83 @@
         </div>
       </header>
 
-      <section id="dashboard" class="view active">
+      <section id="launch" class="view active">
+        <div class="section-title">
+          <p class="eyebrow">Today Mode</p>
+          <h2>Launch Ana 2.0 safely</h2>
+          <p>This is the operating checklist: trigger tag, safety mode, sandbox contacts, cadence drafts, and n8n modules.</p>
+        </div>
+        <div class="launch-grid">
+          <article class="launch-card main">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Follow Up Boss Trigger</p>
+                <h2 id="triggerTagTitle">Loading trigger tag...</h2>
+                <p>Add this tag to one test contact first. Ana 1.0 remains untouched.</p>
+              </div>
+              <span id="launchStatus" class="launch-status">Checking</span>
+            </div>
+            <div id="readinessPanel" class="readiness-grid"></div>
+          </article>
+          <article class="launch-card">
+            <p class="eyebrow">Execution Path</p>
+            <h2>What happens next</h2>
+            <div class="timeline-steps">
+              <div><strong>1</strong><span>FUB tag enrolls contact into Ana 2.0</span></div>
+              <div><strong>2</strong><span>Manager applies rules, budget caps, channel switches</span></div>
+              <div><strong>3</strong><span>Day 1 drafts are created in Outbox</span></div>
+              <div><strong>4</strong><span>Only approved/live mode can send real SMS, email, or calls</span></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="layout two">
+          <article class="panel accent-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Fast Pilot</p>
+                <h2>Create a test lead</h2>
+                <p>Use this to simulate the FUB tag without waiting for the n8n poller.</p>
+              </div>
+            </div>
+            <form id="launchContactForm" class="form">
+              <div class="form-row">
+                <label>Name<input name="name" value="Jose Pilot" required /></label>
+                <label>Person ID<input name="person_id" value="ana2-pilot" required /></label>
+              </div>
+              <div class="form-row">
+                <label>Lead Type
+                  <select name="lead_type">
+                    <option value="buyer">Buyer</option>
+                    <option value="seller">Seller</option>
+                    <option value="renter" selected>Renter</option>
+                    <option value="landlord">Landlord</option>
+                  </select>
+                </label>
+                <label>Area<input name="location_preference" value="Brickell" /></label>
+              </div>
+              <div class="form-row">
+                <label>Monthly Rent<input name="monthly_rent" type="number" value="4500" /></label>
+                <label>Lease Months<input name="lease_months" type="number" value="12" /></label>
+              </div>
+              <input name="trigger_tag" type="hidden" value="Ana 2.0 Test" />
+              <button class="button primary">Create Pilot Contact</button>
+            </form>
+          </article>
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Pilot Contacts</p>
+                <h2>Start Day 1</h2>
+                <p>Creates email, SMS, and call drafts in Outbox. In sandbox, nothing sends.</p>
+              </div>
+            </div>
+            <div id="launchContacts" class="stack"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="dashboard" class="view">
         <div id="systemStrip" class="system-strip"></div>
         <div class="metric-grid" id="metricGrid"></div>
         <div class="layout two">

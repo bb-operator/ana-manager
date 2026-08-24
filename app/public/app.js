@@ -1,6 +1,7 @@
 const state = {
   data: null,
   resources: {},
+  readiness: null,
 };
 
 const ruleLabels = {
@@ -246,6 +247,36 @@ function renderDashboard() {
       <small>${escapeHtml(workflow.migration_status)} · ${escapeHtml(workflow.n8n_workflow_id)}</small>
     </article>
   `).join('');
+}
+
+function renderLaunch() {
+  const readiness = state.readiness || {};
+  const safety = readiness.safety || {};
+  const counts = readiness.counts || {};
+  const triggerTag = readiness.trigger_tag || 'Ana 2.0 Test';
+  dom('#triggerTagTitle').textContent = triggerTag;
+  const live = readiness.status === 'live_sends_enabled';
+  dom('#launchStatus').textContent = live ? 'LIVE SENDS ON' : 'SANDBOX SAFE';
+  dom('#launchStatus').className = `launch-status ${live ? 'live' : 'sandbox'}`;
+  dom('#readinessPanel').innerHTML = `
+    <div><small>Mode</small><strong>${escapeHtml(safety.mode || 'sandbox')}</strong></div>
+    <div><small>Real Sends</small><strong>${safety.real_sends_enabled ? 'Enabled' : 'Blocked'}</strong></div>
+    <div><small>FUB Writes</small><strong>${safety.fub_writes_enabled ? 'Enabled' : 'Blocked'}</strong></div>
+    <div><small>Contacts</small><strong>${counts.contacts || 0}</strong></div>
+    <div><small>Drafts</small><strong>${counts.drafts || 0}</strong></div>
+    <div><small>Decisions</small><strong>${counts.decisions || 0}</strong></div>
+  `;
+
+  const contacts = state.data.ana2Contacts || [];
+  dom('#launchContacts').innerHTML = contacts.length ? contacts.slice(0, 8).map((contact) => `
+    <article class="launch-contact">
+      <div>
+        <strong>${escapeHtml(contact.name || contact.person_id || 'Sandbox lead')}</strong>
+        <span>${escapeHtml(contact.lead_type)} · ${escapeHtml(contact.status)} · ${escapeHtml(contact.person_id || '')}</span>
+      </div>
+      <button class="button primary" data-start-cadence="${contact.id}">Start Day 1</button>
+    </article>
+  `).join('') : '<div class="empty">Create the first pilot contact, then start Day 1.</div>';
 }
 
 function renderSystem() {
@@ -612,13 +643,16 @@ function renderAna2() {
   }
 
   dom('#ana2Contacts').innerHTML = contacts.length ? contacts.map((contact) => `
-    <button class="contact-row" data-contact-id="${contact.id}">
+    <div class="contact-row" data-contact-id="${contact.id}">
       <div>
         <strong>${escapeHtml(contact.name || contact.person_id || 'Lead test')}</strong>
         <span>${escapeHtml(contact.lead_type)} · ${escapeHtml(contact.status)} · ${escapeHtml(contact.trigger_tag || '')}</span>
       </div>
-      ${statusPill(contact.mode === 'sandbox')}
-    </button>
+      <div class="mini-pills">
+        ${statusPill(contact.mode === 'sandbox')}
+        <button class="button secondary" data-start-cadence="${contact.id}">Start Day 1</button>
+      </div>
+    </div>
   `).join('') : '<div class="empty">Create the first sandbox contact.</div>';
 
   dom('#ana2Decisions').innerHTML = decisions.length ? decisions.slice(0, 12).map((decision) => `
@@ -752,9 +786,17 @@ function setStatus(ok, text) {
 }
 
 async function loadAll() {
-  state.data = await api('/api/dashboard');
-  state.data.prompts = await api('/api/prompts');
-  state.data.channels = await api('/api/channels');
+  const [dashboard, prompts, channels, readiness] = await Promise.all([
+    api('/api/dashboard'),
+    api('/api/prompts'),
+    api('/api/channels'),
+    api('/api/ana2/readiness'),
+  ]);
+  state.data = dashboard;
+  state.data.prompts = prompts;
+  state.data.channels = channels;
+  state.readiness = readiness;
+  renderLaunch();
   renderDashboard();
   renderSystem();
   renderRules();
@@ -778,6 +820,18 @@ function wireEvents() {
   document.body.addEventListener('click', (event) => {
     const jump = event.target.closest('[data-jump], [data-view-jump]');
     if (jump) activate(jump.dataset.jump || jump.dataset.viewJump);
+  });
+
+  document.body.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-start-cadence]');
+    if (!button) return;
+    if (!(await confirmChange('Create Day 1 Ana 2.0 drafts for this contact. In sandbox, nothing is sent.'))) return;
+    await api(`/api/ana2/contacts/${button.dataset.startCadence}/start-cadence`, {
+      method: 'POST',
+      body: JSON.stringify({ round: 1 }),
+    });
+    await loadAll();
+    activate('outbox');
   });
 
   dom('#refreshButton').addEventListener('click', loadAll);
@@ -835,6 +889,17 @@ function wireEvents() {
     if (event.target.id === 'ana2ContactForm') {
       event.preventDefault();
       if (!(await confirmChange('Create or update this Ana 2.0 sandbox contact.'))) return;
+      await api('/api/ana2/contacts', {
+        method: 'POST',
+        body: JSON.stringify(payloadFromForm(event.target)),
+      });
+      await loadAll();
+      return;
+    }
+
+    if (event.target.id === 'launchContactForm') {
+      event.preventDefault();
+      if (!(await confirmChange('Create this Ana 2.0 pilot contact.'))) return;
       await api('/api/ana2/contacts', {
         method: 'POST',
         body: JSON.stringify(payloadFromForm(event.target)),

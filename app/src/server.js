@@ -157,7 +157,8 @@ const defaultSeeds = {
     ('ana2_email_inbound', 'ANA 2.0 SANDBOX - Inbound Email', 'BzaGSxBZXN28riwv', 'ana2_inbound', false, 'Sandbox clone of inbound email response and qualification.', 'sandbox_created', '{"folder":"hSHZ6pWSMIPL3UEk","source_workflow_id":"cTYOo8wU42xDMPj4","activation_policy":"manual_test_tag_only"}', 'Will call manager decision endpoint before replying.'),
     ('ana2_call_result_handler', 'ANA 2.0 SANDBOX - Call Result Handler', 'uQH8qqRZGkUnKl2E', 'ana2_call', false, 'Sandbox clone of Retell call result processing.', 'sandbox_created', '{"folder":"hSHZ6pWSMIPL3UEk","source_workflow_id":"WCPsTiP9dWkNXVpG","activation_policy":"manual_test_tag_only"}', 'Will route call qualification through hard guardrails.'),
     ('ana2_conversation_nudge', 'ANA 2.0 SANDBOX - Conversation Nudge', 'YD9U2dQgRHe9qveF', 'ana2_nudge', false, 'Sandbox clone of silence/nudge workflow.', 'sandbox_created', '{"folder":"hSHZ6pWSMIPL3UEk","source_workflow_id":"nM3SNXIqCe1zhzd5","activation_policy":"manual_test_tag_only"}', 'Will block listing promises unless listing integration exists.'),
-    ('ana2_brain_generator', 'ANA 2.0 SANDBOX - Brain Generator', '55IkX6bckD0sJqfU', 'ana2_brain', false, 'Sandbox clone of follow-up message generator.', 'sandbox_created', '{"folder":"hSHZ6pWSMIPL3UEk","source_workflow_id":"FQc1zftPQMKbbFkC","activation_policy":"manual_test_tag_only"}', 'Will become the prompt/output contract module controlled by the manager.')
+    ('ana2_brain_generator', 'ANA 2.0 SANDBOX - Brain Generator', '55IkX6bckD0sJqfU', 'ana2_brain', false, 'Sandbox clone of follow-up message generator.', 'sandbox_created', '{"folder":"hSHZ6pWSMIPL3UEk","source_workflow_id":"FQc1zftPQMKbbFkC","activation_policy":"manual_test_tag_only"}', 'Will become the prompt/output contract module controlled by the manager.'),
+    ('ana2_fub_tag_intake', 'ANA 2.0 - FUB Tag Intake (Manager)', 'I2w76oYX6BiqYJp1', 'ana2_intake', true, 'Polls Follow Up Boss for people carrying the Ana 2.0 trigger tag and registers them in the Manager.', 'manager_controlled', '{"folder":"hSHZ6pWSMIPL3UEk","trigger":"FUB tag","creates":"manager contact + Day 1 sandbox drafts","idempotent":true}', 'Small n8n cable for manual pilot enrollment by CRM tag.')
     ON CONFLICT (key) DO NOTHING
   `,
 };
@@ -499,7 +500,26 @@ function inferLeadType(input) {
 
 function hasTimeSignal(input) {
   const text = textOf(input.message, input.profile, input.summary);
-  return /\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|tonight|morning|afternoon|evening|am|pm|available|anytime|asap)\b/i.test(text);
+  return /\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|tonight|morning|afternoon|evening|am|pm|available|anytime|whenever|flexible|asap)\b/i.test(text);
+}
+
+function hasStrongInterestSignal(input) {
+  const text = textOf(input.message, input.profile, input.summary);
+  return /\b(call me|call|agent|showing|tour|appointment|asap|speak|talk|contact me|see it|see the property|view it|schedule|llamame|llamar|agente|cita|verlo|visita|agendar)\b/i.test(text);
+}
+
+function oneMissingFieldReply(input, decision) {
+  const first = String(input.first_name || input.name || 'there').trim().split(/\s+/)[0] || 'there';
+  if (decision.missing_fields?.includes('budget')) {
+    return `I can share this with our team, ${first}. What budget should we note?`;
+  }
+  if (decision.missing_fields?.includes('monthly_rent')) {
+    return `I can share this with our team, ${first}. What monthly rent should we note?`;
+  }
+  if (decision.missing_fields?.includes('lease_months')) {
+    return `I can share this with our team, ${first}. How many months are you planning to rent?`;
+  }
+  return `I can share this with our team, ${first}. What budget should we note?`;
 }
 
 function generateAna2Reply(input, decision) {
@@ -516,10 +536,10 @@ function generateAna2Reply(input, decision) {
     return '';
   }
   if (decision.action === 'handoff_review') {
-    return `I can share your request with our team, ${first}. What purchase budget should we note so the right person can review it?`;
+    return oneMissingFieldReply(input, decision);
   }
   if (decision.qualified) {
-    return `You're all set, ${first}. I'll share your preferred time and details with our team, and someone will do their best to reach you.`;
+    return `You're all set, ${first}. I'll share your details with our team, and someone will do their best to reach you.`;
   }
   if (decision.missing_fields?.includes('budget')) {
     return `Thanks, ${first}. What budget should we keep in mind for this search?`;
@@ -530,6 +550,48 @@ function generateAna2Reply(input, decision) {
   return `Thanks, ${first}. What area, budget, and timing should we keep in mind?`;
 }
 
+function generateCadenceDraft(contact, action, roundNumber) {
+  const first = String(contact.first_name || contact.name || 'there').trim().split(/\s+/)[0] || 'there';
+  const leadType = inferLeadType(contact);
+  const area = contact.location_preference || 'the area';
+  const summary = contact.summary || contact.profile || '';
+  const channel = normalizeChannel(action.channel || 'sms');
+
+  if (channel === 'call') {
+    return `Call attempt for ${first}. Keep opener short: Ana with Blackbook Properties following up on their ${leadType} inquiry.`;
+  }
+
+  if (roundNumber === 3) {
+    return `Hi ${first}, I do not want to crowd your inbox. If you are still looking around ${area}, reply here and our team can review the best next step.`;
+  }
+
+  if (roundNumber === 2 && channel === 'sms') {
+    return `Still interested in the property, ${first}?`;
+  }
+
+  if (roundNumber === 2 && channel === 'email') {
+    return `Hi ${first}, quick follow-up on your ${leadType} inquiry. If you are still looking around ${area}, what is the best next step for you?`;
+  }
+
+  if (channel === 'sms') {
+    if (leadType === 'seller') return `Hi ${first}, Ana with Blackbook Properties. Are you looking to sell soon or just checking value?`;
+    if (leadType === 'buyer') return `Hi ${first}, Ana with Blackbook Properties. Are you still looking to buy around ${area}?`;
+    if (leadType === 'renter') return `Hi ${first}, Ana with Blackbook Properties. Are you still looking to rent around ${area}?`;
+    return `Hi ${first}, Ana with Blackbook Properties. Are you still interested in the property?`;
+  }
+
+  if (leadType === 'seller') {
+    return `Hi ${first}, Ana with Blackbook Properties here. I saw your seller inquiry and wanted to understand if you are looking to sell soon or just checking the market.`;
+  }
+  if (leadType === 'buyer') {
+    return `Hi ${first}, Ana with Blackbook Properties here. I saw your buyer inquiry${summary ? `, ${summary}` : ''}. Are you still looking in ${area}?`;
+  }
+  if (leadType === 'renter') {
+    return `Hi ${first}, Ana with Blackbook Properties here. I saw your rental inquiry${summary ? `, ${summary}` : ''}. Are you still looking in ${area}?`;
+  }
+  return `Hi ${first}, Ana with Blackbook Properties here. I saw your inquiry and wanted to confirm if you are still interested.`;
+}
+
 async function buildAna2Decision(input) {
   const text = textOf(input.message, input.profile, input.summary);
   const leadType = inferLeadType(input);
@@ -537,7 +599,8 @@ async function buildAna2Decision(input) {
   const budget = Number(input.budget || 0) || 0;
   const monthlyRent = Number(input.monthly_rent || 0) || (leadType === 'renter' ? extractMoney(input) : 0);
   const annualBudget = leadType === 'renter' && monthlyRent ? monthlyRent * (leaseMonths || 12) : (budget || extractMoney(input));
-  const hasAvailability = input.has_time === true || hasTimeSignal(input);
+  const strongInterest = hasStrongInterestSignal(input);
+  const hasAvailability = input.has_time === true || hasTimeSignal(input) || strongInterest;
   const settings = await pool.query("select key, value from asm_system_settings where key in ('qualified_budget_cap','renter_min_lease_months')");
   const settingMap = Object.fromEntries(settings.rows.map((row) => [row.key, row.value]));
   const cap = Number(settingMap.qualified_budget_cap?.buyer_seller_max || 2000000);
@@ -628,21 +691,21 @@ async function buildAna2Decision(input) {
     };
   }
 
-  const agentRequest = /\b(call me|agent|showing|appointment|asap|speak|talk|llamame|llamar|agente|cita)\b/i.test(text);
-  if (['buyer', 'seller'].includes(leadType) && agentRequest && annualBudget <= 0) {
+  if (leadType === 'renter' && monthlyRent <= 0) decision.missing_fields.push('monthly_rent');
+  if (leadType === 'renter' && leaseMonths <= 0) decision.missing_fields.push('lease_months');
+  if (['buyer', 'seller'].includes(leadType) && annualBudget <= 0) decision.missing_fields.push('budget');
+
+  if (strongInterest && decision.missing_fields.length) {
     return {
       ...decision,
       action: 'handoff_review',
+      should_reply: true,
       should_notify_slack: true,
       stop_cadence: true,
-      missing_fields: ['budget'],
-      matched_rules: ['agent_request_missing_budget'],
-      reason: 'Lead wants a human but buyer/seller budget is missing. Notify review, do not mark fully qualified.',
+      matched_rules: ['strong_interest_missing_fields'],
+      reason: `Lead showed strong intent (${decision.missing_fields.join(', ')} still missing). Notify review and ask only the most important missing field.`,
     };
   }
-
-  if (leadType === 'renter' && leaseMonths <= 0) decision.missing_fields.push('lease_months');
-  if (['buyer', 'seller'].includes(leadType) && annualBudget <= 0) decision.missing_fields.push('budget');
 
   const enoughToQualify =
     hasAvailability &&
@@ -987,6 +1050,53 @@ async function getCadenceActions(leadType, roundNumber) {
   return normalizeRows(result.rows);
 }
 
+async function startAna2CadenceForContact(contactInput, roundNumber = 1) {
+  const contact = normalizeRow(contactInput);
+  const leadType = inferLeadType(contact);
+  const runtime = await getAna2RuntimeState('system');
+  const actions = await getCadenceActions(leadType, roundNumber);
+  const created = [];
+
+  for (const action of actions) {
+    const decision = {
+      version: 'ana2.v1',
+      mode: contact.mode || 'sandbox',
+      action: 'cadence_draft',
+      qualified: false,
+      should_reply: true,
+      should_sms: action.channel === 'sms',
+      should_email: action.channel === 'email',
+      should_call: action.channel === 'call',
+      should_notify_slack: false,
+      stop_cadence: false,
+      lead_type: leadType,
+      budget: contact.budget || null,
+      monthly_rent: contact.monthly_rent || null,
+      lease_months: contact.lease_months || null,
+      missing_fields: [],
+      matched_rules: ['start_cadence'],
+      reason: `Ana 2.0 cadence start: round ${roundNumber}, ${action.channel}.`,
+    };
+    const savedDecision = await saveAna2Decision({ contact_id: contact.id, channel: action.channel }, decision);
+    const body = generateCadenceDraft(contact, action, roundNumber);
+    const outbox = await createAna2Outbox(contact.id, savedDecision.id, action.channel, body);
+    created.push({ action, decision: savedDecision, outbox });
+  }
+
+  await pool.query(
+    `insert into asm_ana2_runs (contact_id, run_type, status, current_round, summary)
+     values ($1,'start_cadence',$2,$3,$4)`,
+    [
+      contact.id,
+      created.length ? 'drafted' : 'no_actions',
+      roundNumber,
+      { lead_type: leadType, actions_created: created.length, runtime },
+    ]
+  );
+  await pool.query('update asm_ana2_contacts set status = $1, updated_at = now() where id = $2', ['cadence_started', contact.id]);
+  return { round: roundNumber, lead_type: leadType, runtime, created };
+}
+
 function basicAuth(req, res, next) {
   if (req.path.startsWith('/api/ana2/n8n/')) return next();
   const user = process.env.MANAGER_BASIC_USER;
@@ -1232,6 +1342,45 @@ app.get('/api/ana2/overview', async (_req, res, next) => {
   }
 });
 
+app.get('/api/ana2/readiness', async (_req, res, next) => {
+  try {
+    const [settings, runtime, modules, contacts, outbox, decisions] = await Promise.all([
+      pool.query("select key, value from asm_system_settings where key in ('ana2_trigger_tag','ana2_safety_mode','qualified_budget_cap','renter_min_lease_months')"),
+      getAna2RuntimeState('system'),
+      pool.query("select key, name, n8n_workflow_id, enabled, migration_status from asm_workflow_modules where key like 'ana2_%' order by module_type, name"),
+      pool.query("select count(*)::int as total from asm_ana2_contacts"),
+      pool.query("select count(*)::int as drafts from asm_ana2_outbox where status = 'draft'"),
+      pool.query("select count(*)::int as decisions from asm_ana2_decisions"),
+    ]);
+    const settingMap = Object.fromEntries(settings.rows.map((row) => [row.key, row.value]));
+    const modulesReady = modules.rows.filter((module) => module.enabled !== false).length;
+    res.json({
+      ok: true,
+      status: runtime.can_send ? 'live_sends_enabled' : 'sandbox_ready',
+      trigger_tag: settingMap.ana2_trigger_tag?.value || 'Ana 2.0 Test',
+      safety: settingMap.ana2_safety_mode || runtime.safety,
+      budget_cap: settingMap.qualified_budget_cap || { buyer_seller_max: 2000000 },
+      renter_min_lease_months: settingMap.renter_min_lease_months || { value: 12 },
+      runtime,
+      modules: normalizeRows(modules.rows),
+      modules_ready: modulesReady,
+      counts: {
+        contacts: contacts.rows[0]?.total || 0,
+        drafts: outbox.rows[0]?.drafts || 0,
+        decisions: decisions.rows[0]?.decisions || 0,
+      },
+      next_steps: [
+        'Create or tag one test contact with the trigger tag.',
+        'Confirm safety mode and channel switches.',
+        'Start the Day 1 cadence in sandbox and inspect outbox drafts.',
+        'Only enable real sends after the drafts look correct.',
+      ],
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post('/api/ana2/contacts', async (req, res, next) => {
   try {
     const name = req.body.name || [req.body.first_name, req.body.last_name].filter(Boolean).join(' ');
@@ -1284,6 +1433,19 @@ app.post('/api/ana2/contacts', async (req, res, next) => {
       ]
     );
     res.json(normalizeRow(result.rows[0]));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/ana2/contacts/:id/start-cadence', async (req, res, next) => {
+  try {
+    const contactResult = await pool.query('select * from asm_ana2_contacts where id = $1', [req.params.id]);
+    const contact = normalizeRow(contactResult.rows[0]);
+    if (!contact) return res.status(404).json({ error: 'Ana 2.0 contact not found' });
+    const roundNumber = Number(req.body.round || 1) || 1;
+    const cadence = await startAna2CadenceForContact(contact, roundNumber);
+    res.json({ ok: true, contact, ...cadence });
   } catch (error) {
     next(error);
   }
@@ -1366,6 +1528,13 @@ app.post('/api/ana2/n8n/intake', requireSharedSecret, async (req, res, next) => 
   try {
     const contact = await upsertAna2Contact({ ...req.body, mode: req.body.mode || 'sandbox', source: req.body.source || 'n8n_sandbox_intake' });
     const runtime = await getAna2RuntimeState('system');
+    const shouldStartCadence = req.body.start_cadence !== false;
+    const existingCadence = await pool.query(
+      "select count(*)::int as total from asm_ana2_runs where contact_id = $1 and run_type = 'start_cadence'",
+      [contact.id]
+    );
+    const canStartCadence = shouldStartCadence && (req.body.force_start_cadence === true || Number(existingCadence.rows[0]?.total || 0) === 0);
+    const cadence = canStartCadence ? await startAna2CadenceForContact(contact, Number(req.body.round || 1) || 1) : null;
     await pool.query(
       `insert into asm_ana2_runs (contact_id, run_type, status, current_round, summary)
        values ($1,'intake','registered',0,$2)`,
@@ -1376,10 +1545,12 @@ app.post('/api/ana2/n8n/intake', requireSharedSecret, async (req, res, next) => 
           workflow_id: req.body.workflow_id || null,
           execution_id: req.body.execution_id || null,
           runtime,
+          cadence_started: Boolean(cadence),
+          cadence_skipped_reason: shouldStartCadence && !canStartCadence ? 'already_started' : null,
         },
       ]
     );
-    res.json({ ok: true, contact, runtime });
+    res.json({ ok: true, contact, runtime, cadence });
   } catch (error) {
     next(error);
   }

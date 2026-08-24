@@ -17,6 +17,7 @@
   --success-soft: #e8f2ec;
   --blue-soft: #e8eef2;
   --shadow: 0 18px 50px rgba(0, 0, 0, 0.08);
+  --shadow-strong: 0 28px 90px rgba(0, 0, 0, 0.16);
 }
 
 * {
@@ -37,6 +38,17 @@ body {
   background-size: 72px 72px, auto;
   font-family: "Sohne Buch", "Avenir Next", "Helvetica Neue", Helvetica, Arial, sans-serif;
   letter-spacing: -0.01em;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 78% 10%, rgba(206, 191, 127, 0.18), transparent 28rem),
+    radial-gradient(circle at 18% 74%, rgba(0, 0, 0, 0.08), transparent 22rem);
+  pointer-events: none;
 }
 
 button,
@@ -201,7 +213,7 @@ nav {
     linear-gradient(120deg, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0.72)),
     radial-gradient(circle at 84% 15%, rgba(232, 216, 145, 0.35), transparent 26rem),
     linear-gradient(135deg, #111111, #000000);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-strong);
 }
 
 .hero::before {
@@ -382,9 +394,120 @@ table,
 .metric-grid,
 .control-grid,
 .workflow-grid,
-.layout {
+.layout,
+.launch-grid,
+.readiness-grid {
   display: grid;
   gap: 18px;
+}
+
+.launch-grid {
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  margin-bottom: 18px;
+}
+
+.launch-card {
+  border: 1px solid var(--line);
+  padding: clamp(24px, 4vw, 40px);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(245, 243, 238, 0.96)),
+    var(--paper);
+  box-shadow: var(--shadow);
+}
+
+.launch-card.main {
+  color: var(--paper);
+  border-color: #111111;
+  background:
+    linear-gradient(135deg, rgba(5, 5, 5, 0.96), rgba(26, 26, 23, 0.92)),
+    radial-gradient(circle at top right, rgba(232, 216, 145, 0.35), transparent 20rem);
+}
+
+.launch-card.main h2,
+.launch-card.main p {
+  color: var(--paper);
+}
+
+.launch-status {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid currentColor;
+  padding: 9px 12px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.launch-status.sandbox {
+  color: var(--gold-light);
+}
+
+.launch-status.live {
+  color: #ffffff;
+  background: var(--danger);
+}
+
+.readiness-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 24px;
+}
+
+.readiness-grid div {
+  border: 1px solid rgba(232, 216, 145, 0.34);
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.readiness-grid small,
+.readiness-grid strong {
+  display: block;
+}
+
+.readiness-grid small {
+  color: #bdb9aa;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.readiness-grid strong {
+  margin-top: 8px;
+  color: #ffffff;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  font-weight: 400;
+}
+
+.timeline-steps {
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.timeline-steps div {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 14px;
+  align-items: center;
+}
+
+.timeline-steps strong {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  color: var(--black);
+  background: var(--gold);
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+}
+
+.timeline-steps span {
+  color: var(--charcoal);
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .system-strip {
@@ -757,7 +880,8 @@ textarea {
 }
 
 .decision-row,
-.contact-row {
+.contact-row,
+.launch-contact {
   display: flex;
   justify-content: space-between;
   gap: 14px;
@@ -771,7 +895,13 @@ textarea {
 }
 
 .contact-row {
-  cursor: pointer;
+  cursor: default;
+}
+
+.launch-contact {
+  background:
+    linear-gradient(90deg, rgba(206, 191, 127, 0.12), transparent),
+    var(--paper);
 }
 
 .contact-row:hover,
@@ -784,7 +914,9 @@ textarea {
 .decision-row strong,
 .decision-row span,
 .contact-row strong,
-.contact-row span {
+.contact-row span,
+.launch-contact strong,
+.launch-contact span {
   display: block;
 }
 
@@ -921,7 +1053,8 @@ dialog::backdrop {
 @media (max-width: 1180px) {
   .system-strip,
   .metric-grid,
-  .workflow-grid {
+  .workflow-grid,
+  .readiness-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -956,6 +1089,8 @@ dialog::backdrop {
   .metric-grid,
   .control-grid,
   .workflow-grid,
+  .launch-grid,
+  .readiness-grid,
   .layout.two,
   .form-row,
   .step-editor,
