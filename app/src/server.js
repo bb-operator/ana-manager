@@ -150,14 +150,9 @@ const defaultSeeds = {
     ('sms_inbound', 'BBP — Ana Inbound SMS', 'UvMU7F3rm6fpWQEc', 'inbound', true, 'Receives SMS, logs inbound, qualifies with AI, replies, routes handoff/review, Slack alert.', 'observed', '{"controls":["reaction_signal","handoff_stop","qualification","slack_route","dnc"]}', 'Primary SMS conversation flow.'),
     ('email_inbound', 'BBP — Ana Inbound Email', 'cTYOo8wU42xDMPj4', 'inbound', true, 'Receives email, logs inbound, checks DNC, qualifies with AI, replies, routes handoff/review.', 'observed', '{"controls":["qualification","handoff_stop","slack_route","dnc","html_reply"]}', 'Primary email conversation flow.'),
     ('call_result_handler', 'BBP - Call Result Handler', 'WCPsTiP9dWkNXVpG', 'call', true, 'Receives Retell analysis, logs call to FUB, marks called/qualified, applies handoff tag and Slack.', 'observed', '{"controls":["call_success","qualified","slack_route","handoff_tag"]}', 'Primary call result processing flow.'),
-    ('ana2_fub_intake', 'ANA 2.0 SANDBOX - FUB Tag Intake', '5XNattAZdKgmum8Z', 'ana2_intake', true, 'Polls Follow Up Boss for people carrying the Ana 2.0 trigger tag and registers them in the Manager.', 'manager_controlled', '{"folder":"hSHZ6pWSMIPL3UEk","trigger":"FUB tag","creates":"manager contact + Day 1 sandbox drafts","idempotent":true}', 'Small n8n cable for manual pilot enrollment by CRM tag. Production Ana 1.0 remains untouched.'),
-    ('ana2_dispatcher', 'ANA 2.0 SANDBOX - Dispatcher', '89aXkRUsRr94wjVI', 'ana2_dispatcher', false, 'Sandbox clone of the dispatcher/motor workflow.', 'sandbox_created', '{"folder":"hSHZ6pWSMIPL3UEk","source_workflow_id":"tDAyougPHt31wsXM","activation_policy":"manual_test_tag_only"}', 'Created inactive so schedules do not collide with production.'),
-    ('ana2_cadence_runner', 'ANA 2.0 SANDBOX - Cadence Runner', 'a15nW1VR7dgbBiOp', 'ana2_cadence', false, 'Sandbox clone of cadence execution for Day 1, Day 2, and final exit testing.', 'sandbox_created', '{"folder":"hSHZ6pWSMIPL3UEk","source_workflow_id":"FSdIUZCQ3sB9stpa","activation_policy":"manual_test_tag_only"}', 'Primary flow to wire to manager cadence actions.'),
-    ('ana2_sms_inbound', 'ANA 2.0 SANDBOX - Inbound SMS', 'MPX2qSRk257ZY0aZ', 'ana2_inbound', false, 'Sandbox clone of inbound SMS response and qualification.', 'sandbox_created', '{"folder":"hSHZ6pWSMIPL3UEk","source_workflow_id":"UvMU7F3rm6fpWQEc","activation_policy":"manual_test_tag_only"}', 'Will call manager decision endpoint before replying.'),
-    ('ana2_email_inbound', 'ANA 2.0 SANDBOX - Inbound Email', 'BzaGSxBZXN28riwv', 'ana2_inbound', false, 'Sandbox clone of inbound email response and qualification.', 'sandbox_created', '{"folder":"hSHZ6pWSMIPL3UEk","source_workflow_id":"cTYOo8wU42xDMPj4","activation_policy":"manual_test_tag_only"}', 'Will call manager decision endpoint before replying.'),
-    ('ana2_call_result_handler', 'ANA 2.0 SANDBOX - Call Result Handler', 'uQH8qqRZGkUnKl2E', 'ana2_call', false, 'Sandbox clone of Retell call result processing.', 'sandbox_created', '{"folder":"hSHZ6pWSMIPL3UEk","source_workflow_id":"WCPsTiP9dWkNXVpG","activation_policy":"manual_test_tag_only"}', 'Will route call qualification through hard guardrails.'),
-    ('ana2_conversation_nudge', 'ANA 2.0 SANDBOX - Conversation Nudge', 'YD9U2dQgRHe9qveF', 'ana2_nudge', false, 'Thin manager cable for short nudge drafts.', 'manager_controlled', '{"folder":"hSHZ6pWSMIPL3UEk","source_workflow_id":"nM3SNXIqCe1zhzd5","activation_policy":"sandbox_webhook_only"}', 'Manager blocks long/robotic nudges and listing promises.'),
-    ('ana2_brain_generator', 'ANA 2.0 SANDBOX - Brain Generator', '55IkX6bckD0sJqfU', 'ana2_brain', false, 'Thin manager cable for controlled draft generation.', 'manager_controlled', '{"folder":"hSHZ6pWSMIPL3UEk","source_workflow_id":"FQc1zftPQMKbbFkC","activation_policy":"execute_workflow_only"}', 'Prompts, rules, budgets, and style live in the Manager.')
+    ('ana2_intake', 'ANA 2.0 - Intake', '5XNattAZdKgmum8Z', 'ana2_intake', true, 'Polls Follow Up Boss for people carrying the Ana 2.0 trigger tag and registers them in the Manager.', 'manager_controlled', '{"folder":"hSHZ6pWSMIPL3UEk","trigger":"FUB tag","creates":"manager contact + Day 1 sandbox drafts","idempotent":true}', 'Small n8n cable for manual pilot enrollment by CRM tag. Production Ana 1.0 remains untouched.'),
+    ('ana2_inbound_router', 'ANA 2.0 - Inbound Router', 'MPX2qSRk257ZY0aZ', 'ana2_inbound', true, 'Single sandbox webhook for SMS, email, and call-result inbound events.', 'manager_controlled', '{"folder":"hSHZ6pWSMIPL3UEk","channels":["sms","email","call"],"webhook":"ana2-inbound"}', 'Manager owns all decisions, prompts, rules, safety, logs and outbox.'),
+    ('ana2_cadence_executor', 'ANA 2.0 - Cadence Executor', 'a15nW1VR7dgbBiOp', 'ana2_cadence', true, 'Asks the Manager for Day 1, Day 2, and Final Exit actions and drafts/logs them.', 'manager_controlled', '{"folder":"hSHZ6pWSMIPL3UEk","rounds":["day_1","day_2","final_exit"],"source":"manager"}', 'No business logic lives here; it only executes Manager cadence instructions.')
     ON CONFLICT (key) DO NOTHING
   `,
 };
@@ -313,17 +308,35 @@ async function seedDefaults() {
     await pool.query(sql);
   }
 
-  await pool.query("delete from asm_workflow_modules where key = 'ana2_fub_tag_intake'");
-  await pool.query(
-    `update asm_workflow_modules
-     set name = 'ANA 2.0 SANDBOX - FUB Tag Intake',
-         enabled = true,
-         role_description = 'Polls Follow Up Boss for people carrying the Ana 2.0 trigger tag and registers them in the Manager.',
-         migration_status = 'manager_controlled',
-         control_surface = '{"folder":"hSHZ6pWSMIPL3UEk","trigger":"FUB tag","creates":"manager contact + Day 1 sandbox drafts","idempotent":true}'::jsonb,
-         notes = 'Small n8n cable for manual pilot enrollment by CRM tag. Production Ana 1.0 remains untouched.'
-     where key = 'ana2_fub_intake'`
-  );
+  await pool.query(`
+    DELETE FROM asm_workflow_modules
+    WHERE key IN (
+      'ana2_fub_tag_intake',
+      'ana2_fub_intake',
+      'ana2_dispatcher',
+      'ana2_cadence_runner',
+      'ana2_sms_inbound',
+      'ana2_email_inbound',
+      'ana2_call_result_handler',
+      'ana2_conversation_nudge',
+      'ana2_brain_generator'
+    )
+  `);
+  await pool.query(`
+    INSERT INTO asm_workflow_modules (key, name, n8n_workflow_id, module_type, enabled, role_description, migration_status, control_surface, notes) VALUES
+    ('ana2_intake', 'ANA 2.0 - Intake', '5XNattAZdKgmum8Z', 'ana2_intake', true, 'Polls Follow Up Boss for people carrying the Ana 2.0 trigger tag and registers them in the Manager.', 'manager_controlled', '{"folder":"hSHZ6pWSMIPL3UEk","trigger":"FUB tag","creates":"manager contact + Day 1 sandbox drafts","idempotent":true}', 'Small n8n cable for manual pilot enrollment by CRM tag. Production Ana 1.0 remains untouched.'),
+    ('ana2_inbound_router', 'ANA 2.0 - Inbound Router', 'MPX2qSRk257ZY0aZ', 'ana2_inbound', true, 'Single sandbox webhook for SMS, email, and call-result inbound events.', 'manager_controlled', '{"folder":"hSHZ6pWSMIPL3UEk","channels":["sms","email","call"],"webhook":"ana2-inbound"}', 'Manager owns all decisions, prompts, rules, safety, logs and outbox.'),
+    ('ana2_cadence_executor', 'ANA 2.0 - Cadence Executor', 'a15nW1VR7dgbBiOp', 'ana2_cadence', true, 'Asks the Manager for Day 1, Day 2, and Final Exit actions and drafts/logs them.', 'manager_controlled', '{"folder":"hSHZ6pWSMIPL3UEk","rounds":["day_1","day_2","final_exit"],"source":"manager"}', 'No business logic lives here; it only executes Manager cadence instructions.')
+    ON CONFLICT (key) DO UPDATE
+    SET name = EXCLUDED.name,
+        n8n_workflow_id = EXCLUDED.n8n_workflow_id,
+        module_type = EXCLUDED.module_type,
+        enabled = EXCLUDED.enabled,
+        role_description = EXCLUDED.role_description,
+        migration_status = EXCLUDED.migration_status,
+        control_surface = EXCLUDED.control_surface,
+        notes = EXCLUDED.notes
+  `);
 
   await pool.query(`
     INSERT INTO asm_cadence_steps (cadence_id, step_number, channel, delay_minutes, prompt_key, stop_if)
