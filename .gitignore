@@ -1,0 +1,8 @@
+.env
+.env.local
+node_modules/
+directus/uploads/
+directus/extensions/
+postgres-data/
+*.log
+

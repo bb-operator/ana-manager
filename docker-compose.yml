@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+
+  directus:
+    image: directus/directus:latest
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT}:8055"
+    environment:
+      KEY: ${DIRECTUS_KEY}
+      SECRET: ${DIRECTUS_SECRET}
+      ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD}
+      PUBLIC_URL: ${PUBLIC_URL}
+      DB_CLIENT: pg
+      DB_CONNECTION_STRING: ${DATABASE_URL}
+      WEBSOCKETS_ENABLED: "true"
+      TELEMETRY: "false"
+      CORS_ENABLED: "true"
+      CORS_ORIGIN: "true"
+      EXTENSIONS_AUTO_RELOAD: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./directus/uploads:/directus/uploads
+      - ./directus/extensions:/directus/extensions
+
+volumes:
+  postgres-data:
+
