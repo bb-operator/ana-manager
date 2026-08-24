@@ -20,13 +20,16 @@ Inbound SMS / Email / Call
 n8n receives event
         |
         v
-n8n reads Ana System Manager config
+n8n sends normalized contact + message to Ana System Manager
         |
         v
-n8n applies rules / prompts / emergency controls
+Ana System Manager applies rules, guardrails, cadence config, and safety switches
         |
         v
-n8n executes provider actions
+Ana System Manager returns an executable decision
+        |
+        v
+n8n executes provider actions only when the decision allows it
         |
         v
 Ana System Manager receives logs
@@ -34,7 +37,7 @@ Ana System Manager receives logs
 
 ## Core Rule
 
-The system manager is the source of truth for configuration. n8n should not hardcode business rules once a rule exists in the manager.
+The system manager is the source of truth for configuration and business decisions. n8n should become a thin execution layer for provider actions such as Twilio, Gmail, Retell, Slack, Follow Up Boss, and Airtable.
 
 ## First n8n Integration Points
 
@@ -59,4 +62,3 @@ The system manager is the source of truth for configuration. n8n should not hard
 - `asm_decision_logs`
 - `asm_error_logs`
 - `asm_eval_cases`
-

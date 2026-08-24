@@ -8,7 +8,7 @@ ANA 2.0 is the parallel control system for Ana. It is designed to let us test, a
 - ANA 2.0 starts in `sandbox` mode.
 - Real sends are disabled by default through `ana2_safety_mode`.
 - Follow Up Boss writes are disabled by default through `ana2_safety_mode`.
-- n8n can call ANA 2.0 only through `/api/ana2/n8n/evaluate` with `N8N_SHARED_SECRET`.
+- n8n can call ANA 2.0 only through `/api/ana2/n8n/*` endpoints with `N8N_SHARED_SECRET`.
 
 ## Real Cadence
 
@@ -38,6 +38,21 @@ Each action has its own channel, delay, prompt, enabled flag, and stop rules.
 4. Simulate an inbound SMS, email, or call.
 5. Review the decision reason and matched rules.
 6. Check `Outbox` to see what Ana would have drafted.
+
+## n8n Sandbox Endpoints
+
+- `POST /api/ana2/n8n/intake`: register or update a sandbox contact from the intake clone.
+- `POST /api/ana2/n8n/inbound`: log an inbound message, evaluate guardrails, create an outbox draft, and return a legacy-compatible decision for n8n.
+- `POST /api/ana2/n8n/cadence/next`: return the configured Day 1, Day 2, or Day 3 actions for a lead type.
+- `POST /api/ana2/n8n/message-draft`: generate a controlled draft for sandbox executor flows.
+- `POST /api/ana2/n8n/action-result`: log the result of a provider action back into the Manager.
+
+## Current Sandbox Wiring
+
+- Inbound SMS sandbox calls the Manager after `Build Context`.
+- Inbound Email sandbox calls the Manager after `Build Context`.
+- Both clones keep provider execution in n8n, but decision logic now comes from the Manager.
+- Both clones remain inactive until explicitly activated for sandbox testing.
 
 ## Migration Path
 

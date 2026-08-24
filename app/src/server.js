@@ -703,6 +703,290 @@ async function createAna2Outbox(contactId, decisionId, channel, body) {
   return normalizeRow(result.rows[0]);
 }
 
+function objectFrom(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function firstPresent(...values) {
+  return values.find((value) => value !== undefined && value !== null && value !== '');
+}
+
+function getAny(input, keys) {
+  const buckets = [
+    objectFrom(input),
+    objectFrom(input.contact),
+    objectFrom(input.lead),
+    objectFrom(input.person),
+    objectFrom(input.extract),
+    objectFrom(input.payload),
+  ];
+
+  for (const bucket of buckets) {
+    for (const key of keys) {
+      if (Object.prototype.hasOwnProperty.call(bucket, key) && bucket[key] !== undefined && bucket[key] !== null && bucket[key] !== '') {
+        return bucket[key];
+      }
+    }
+  }
+
+  return null;
+}
+
+function numberOrNull(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const numeric = Number(String(value).replace(/[$,\s]/g, ''));
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function integerOrNull(value) {
+  const numeric = numberOrNull(value);
+  return numeric === null ? null : Math.round(numeric);
+}
+
+function normalizeChannel(value) {
+  const channel = String(value || 'system').toLowerCase();
+  return ['sms', 'email', 'call', 'system'].includes(channel) ? channel : 'system';
+}
+
+function buildContactPayload(input) {
+  const firstName = getAny(input, ['first_name', 'firstName', 'First Name']);
+  const lastName = getAny(input, ['last_name', 'lastName', 'Last Name']);
+  const fullName = getAny(input, ['name', 'Name', 'full_name', 'fullName']) || [firstName, lastName].filter(Boolean).join(' ');
+  const personId = String(
+    firstPresent(
+      getAny(input, ['person_id', 'personId', 'Person ID', 'fub_person_id', 'id']),
+      getAny(input, ['phone', 'Phone']),
+      getAny(input, ['email', 'Email']),
+      `sandbox-${Date.now()}`
+    )
+  );
+
+  const message = getAny(input, ['message', 'body', 'Body', 'text', 'Text']) || '';
+  const profile = getAny(input, ['profile', 'Lead Profile', 'lead_profile']);
+  const summary = getAny(input, ['summary', 'Summary']);
+  const leadType = inferLeadType({
+    lead_type: getAny(input, ['lead_type', 'leadType', 'Lead Type']),
+    message,
+    profile,
+    summary,
+  });
+
+  return {
+    person_id: personId,
+    source: getAny(input, ['source']) || 'n8n_sandbox',
+    trigger_tag: getAny(input, ['trigger_tag', 'triggerTag']) || 'Ana 2.0 Test',
+    mode: getAny(input, ['mode']) || 'sandbox',
+    status: getAny(input, ['status']) || 'new',
+    first_name: firstName || null,
+    last_name: lastName || null,
+    name: fullName || null,
+    phone: getAny(input, ['phone', 'Phone']) || null,
+    email: getAny(input, ['email', 'Email']) || null,
+    lead_type: leadType,
+    budget: numberOrNull(getAny(input, ['budget', 'Budget', 'annualBudget', 'annual_budget'])),
+    monthly_rent: numberOrNull(getAny(input, ['monthly_rent', 'monthlyRent', 'Monthly Rent'])),
+    lease_months: integerOrNull(getAny(input, ['lease_months', 'leaseMonths', 'Lease Months'])),
+    bedrooms: getAny(input, ['bedrooms', 'Bedrooms']) || null,
+    location_preference: getAny(input, ['location_preference', 'locationPreference', 'Location']) || null,
+    timeframe: getAny(input, ['timeframe', 'Timeframe']) || null,
+    fub_url: getAny(input, ['fub_url', 'fubUrl', 'FUB Person Link']) || `https://hbroswell2.followupboss.com/2/people/view/${personId}`,
+    profile: profile || null,
+    notes: getAny(input, ['notes', 'Notes']) || summary || null,
+  };
+}
+
+async function upsertAna2Contact(input) {
+  const payload = buildContactPayload(input);
+  const result = await pool.query(
+    `insert into asm_ana2_contacts
+      (person_id, source, trigger_tag, mode, status, first_name, last_name, name, phone, email, lead_type, budget, monthly_rent, lease_months, bedrooms, location_preference, timeframe, fub_url, profile, notes)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+     on conflict (person_id, mode) do update set
+      source = excluded.source,
+      trigger_tag = excluded.trigger_tag,
+      first_name = coalesce(excluded.first_name, asm_ana2_contacts.first_name),
+      last_name = coalesce(excluded.last_name, asm_ana2_contacts.last_name),
+      name = coalesce(excluded.name, asm_ana2_contacts.name),
+      phone = coalesce(excluded.phone, asm_ana2_contacts.phone),
+      email = coalesce(excluded.email, asm_ana2_contacts.email),
+      lead_type = case when excluded.lead_type <> 'unknown' then excluded.lead_type else asm_ana2_contacts.lead_type end,
+      budget = coalesce(excluded.budget, asm_ana2_contacts.budget),
+      monthly_rent = coalesce(excluded.monthly_rent, asm_ana2_contacts.monthly_rent),
+      lease_months = coalesce(excluded.lease_months, asm_ana2_contacts.lease_months),
+      bedrooms = coalesce(excluded.bedrooms, asm_ana2_contacts.bedrooms),
+      location_preference = coalesce(excluded.location_preference, asm_ana2_contacts.location_preference),
+      timeframe = coalesce(excluded.timeframe, asm_ana2_contacts.timeframe),
+      fub_url = coalesce(excluded.fub_url, asm_ana2_contacts.fub_url),
+      profile = coalesce(excluded.profile, asm_ana2_contacts.profile),
+      notes = coalesce(excluded.notes, asm_ana2_contacts.notes),
+      updated_at = now()
+     returning *`,
+    [
+      payload.person_id,
+      payload.source,
+      payload.trigger_tag,
+      payload.mode,
+      payload.status,
+      payload.first_name,
+      payload.last_name,
+      payload.name,
+      payload.phone,
+      payload.email,
+      payload.lead_type,
+      payload.budget,
+      payload.monthly_rent,
+      payload.lease_months,
+      payload.bedrooms,
+      payload.location_preference,
+      payload.timeframe,
+      payload.fub_url,
+      payload.profile,
+      payload.notes,
+    ]
+  );
+  return normalizeRow(result.rows[0]);
+}
+
+async function logAna2Message(contactId, direction, channel, body, metadata = {}) {
+  if (!contactId || !body) return null;
+  const result = await pool.query(
+    `insert into asm_ana2_messages (contact_id, direction, channel, body, metadata)
+     values ($1,$2,$3::asm_channel,$4,$5)
+     returning *`,
+    [contactId, direction, normalizeChannel(channel), body, metadata]
+  );
+  return normalizeRow(result.rows[0]);
+}
+
+async function getAna2RuntimeState(channel = 'system') {
+  const [settings, controls, channelConfig] = await Promise.all([
+    pool.query("select key, value from asm_system_settings where key = 'ana2_safety_mode'"),
+    pool.query("select key, enabled from asm_emergency_controls where key in ('all_systems','cadences','sms_channel','email_channel','call_channel')"),
+    pool.query('select channel, enabled from asm_channels where channel = $1::asm_channel', [normalizeChannel(channel)]),
+  ]);
+  const safety = settings.rows[0]?.value || { mode: 'sandbox', real_sends_enabled: false, fub_writes_enabled: false };
+  const controlMap = Object.fromEntries(controls.rows.map((row) => [row.key, row.enabled]));
+  const channelEnabled = channelConfig.rows[0]?.enabled !== false;
+  const channelSwitchKey = `${normalizeChannel(channel)}_channel`;
+  const allSystemsOn = controlMap.all_systems !== false;
+  const channelSwitchOn = controlMap[channelSwitchKey] !== false;
+  return {
+    safety,
+    controls: controlMap,
+    channel_enabled: channelEnabled,
+    can_send: allSystemsOn && channelEnabled && channelSwitchOn && safety.real_sends_enabled === true,
+    can_write_fub: allSystemsOn && safety.fub_writes_enabled === true,
+  };
+}
+
+function buildN8nDecisionPayload(contact, decision, reply, runtime, outbox = null) {
+  const canSend = runtime.can_send && decision.should_reply === true && Boolean(reply);
+  return {
+    action: decision.action,
+    reply,
+    qualified: decision.qualified === true,
+    summary: decision.reason || '',
+    profile: contact.profile || '',
+    optout: decision.action === 'opt_out',
+    existingClient: false,
+    doNotContact: ['human_review', 'budget_review'].includes(decision.action),
+    leadType: decision.lead_type || contact.lead_type,
+    lead_type: decision.lead_type || contact.lead_type,
+    annualBudget: decision.budget || null,
+    budget: decision.budget || null,
+    monthlyRent: decision.monthly_rent || null,
+    monthly_rent: decision.monthly_rent || null,
+    leaseMonths: decision.lease_months || null,
+    lease_months: decision.lease_months || null,
+    hasTime: !decision.missing_fields?.includes('availability'),
+    missingFields: decision.missing_fields || [],
+    matchedRules: decision.matched_rules || [],
+    reason: decision.reason,
+    shouldReply: canSend,
+    should_reply: canSend,
+    should_sms: canSend && decision.should_sms === true,
+    should_email: canSend && decision.should_email === true,
+    should_call: runtime.can_send && decision.should_call === true,
+    should_notify_slack: decision.should_notify_slack === true,
+    stop_cadence: decision.stop_cadence === true,
+    manager_contact_id: contact.id,
+    manager_outbox_id: outbox?.id || null,
+    safety_blocked_send: decision.should_reply === true && !canSend,
+  };
+}
+
+async function evaluateAna2ForN8n(input, direction = 'inbound') {
+  const channel = normalizeChannel(input.channel || getAny(input, ['channel']) || 'system');
+  const contact = await upsertAna2Contact({ ...input, channel });
+  const body = getAny(input, ['message', 'body', 'Body', 'text', 'Text']) || '';
+  const metadata = {
+    source: input.source || 'n8n_sandbox',
+    workflow_id: input.workflow_id || input.metadata?.workflow_id || null,
+    execution_id: input.execution_id || input.metadata?.execution_id || null,
+    raw: input.metadata || {},
+  };
+  const message = direction === 'none' ? null : await logAna2Message(contact.id, direction, channel, body, metadata);
+  const decisionInput = {
+    ...contact,
+    ...input,
+    contact_id: contact.id,
+    channel,
+    message: body,
+    mode: contact.mode,
+    lead_type: contact.lead_type,
+    budget: contact.budget,
+    monthly_rent: contact.monthly_rent,
+    lease_months: contact.lease_months,
+  };
+  const decision = await buildAna2Decision(decisionInput);
+  const savedDecision = await saveAna2Decision({ contact_id: contact.id, channel }, decision, message?.id || input.message_id || null);
+  const reply = generateAna2Reply({ ...contact, ...input, message: body }, decision);
+  const outbox = await createAna2Outbox(contact.id, savedDecision.id, channel, reply);
+  const runtime = await getAna2RuntimeState(channel);
+  const n8nDecision = buildN8nDecisionPayload(contact, decision, reply, runtime, outbox);
+  const nextStatus = decision.qualified ? 'qualified_handoff' : decision.stop_cadence ? decision.action : 'in_conversation';
+  await pool.query(
+    `update asm_ana2_contacts
+     set status = $1, lead_type = $2, budget = coalesce($3, budget), monthly_rent = coalesce($4, monthly_rent), lease_months = coalesce($5, lease_months), updated_at = now()
+     where id = $6`,
+    [nextStatus, decision.lead_type || contact.lead_type, decision.budget || null, decision.monthly_rent || null, decision.lease_months || null, contact.id]
+  );
+  await pool.query(
+    `insert into asm_ana2_runs (contact_id, run_type, status, current_round, summary)
+     values ($1,$2,$3,$4,$5)`,
+    [
+      contact.id,
+      input.workflow_name || 'n8n_sandbox_gate',
+      'evaluated',
+      Number(input.round || input.current_round || 0) || 0,
+      {
+        channel,
+        direction,
+        decision: n8nDecision,
+        runtime,
+        workflow_id: input.workflow_id || null,
+        execution_id: input.execution_id || null,
+      },
+    ]
+  );
+  return { ok: true, contact, message, decision: n8nDecision, raw_decision: savedDecision, outbox, runtime };
+}
+
+async function getCadenceActions(leadType, roundNumber) {
+  const result = await pool.query(
+    `select ca.*
+     from asm_cadence_actions ca
+     join asm_cadences c on c.id = ca.cadence_id
+     where c.enabled = true
+       and ca.enabled = true
+       and c.lead_type = $1
+       and ca.round_number = $2
+     order by ca.action_order asc`,
+    [leadType || 'unknown', Number(roundNumber || 1)]
+  );
+  return normalizeRows(result.rows);
+}
+
 function basicAuth(req, res, next) {
   if (req.path.startsWith('/api/ana2/n8n/')) return next();
   const user = process.env.MANAGER_BASIC_USER;
@@ -1072,11 +1356,122 @@ app.post('/api/ana2/decision/evaluate', async (req, res, next) => {
 
 app.post('/api/ana2/n8n/evaluate', requireSharedSecret, async (req, res, next) => {
   try {
-    const decision = await buildAna2Decision({ ...req.body, mode: req.body.mode || 'sandbox' });
-    const saved = await saveAna2Decision(req.body, decision, req.body.message_id || null);
-    const reply = generateAna2Reply(req.body, decision);
-    const outbox = await createAna2Outbox(req.body.contact_id || null, saved.id, req.body.channel || 'system', reply);
-    res.json({ ok: true, decision: saved.decision, decision_id: saved.id, outbox });
+    res.json(await evaluateAna2ForN8n({ ...req.body, mode: req.body.mode || 'sandbox' }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/ana2/n8n/intake', requireSharedSecret, async (req, res, next) => {
+  try {
+    const contact = await upsertAna2Contact({ ...req.body, mode: req.body.mode || 'sandbox', source: req.body.source || 'n8n_sandbox_intake' });
+    const runtime = await getAna2RuntimeState('system');
+    await pool.query(
+      `insert into asm_ana2_runs (contact_id, run_type, status, current_round, summary)
+       values ($1,'intake','registered',0,$2)`,
+      [
+        contact.id,
+        {
+          source: req.body.source || 'n8n_sandbox_intake',
+          workflow_id: req.body.workflow_id || null,
+          execution_id: req.body.execution_id || null,
+          runtime,
+        },
+      ]
+    );
+    res.json({ ok: true, contact, runtime });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/ana2/n8n/inbound', requireSharedSecret, async (req, res, next) => {
+  try {
+    res.json(await evaluateAna2ForN8n({ ...req.body, mode: req.body.mode || 'sandbox', source: req.body.source || 'n8n_sandbox_inbound' }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/ana2/n8n/cadence/next', requireSharedSecret, async (req, res, next) => {
+  try {
+    const contact = await upsertAna2Contact({ ...req.body, mode: req.body.mode || 'sandbox', source: req.body.source || 'n8n_sandbox_cadence' });
+    const runtime = await getAna2RuntimeState('system');
+    const leadType = inferLeadType({ ...contact, ...req.body });
+    const roundNumber = Number(req.body.round || req.body.current_round || req.body.next_round || 1) || 1;
+    const actions = await getCadenceActions(leadType, roundNumber);
+    const executableActions = actions.map((action) => ({
+      ...action,
+      can_execute: runtime.can_send,
+      blocked_reason: runtime.can_send ? null : 'Ana 2.0 safety mode is blocking real sends.',
+    }));
+    await pool.query(
+      `insert into asm_ana2_runs (contact_id, run_type, status, current_round, summary)
+       values ($1,'cadence_next',$2,$3,$4)`,
+      [
+        contact.id,
+        executableActions.length ? 'planned' : 'no_actions',
+        roundNumber,
+        { lead_type: leadType, actions: executableActions, runtime },
+      ]
+    );
+    res.json({ ok: true, contact, lead_type: leadType, round: roundNumber, actions: executableActions, runtime });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/ana2/n8n/message-draft', requireSharedSecret, async (req, res, next) => {
+  try {
+    const contact = await upsertAna2Contact({ ...req.body, mode: req.body.mode || 'sandbox', source: req.body.source || 'n8n_sandbox_draft' });
+    const channel = normalizeChannel(req.body.channel || 'sms');
+    const decision = await buildAna2Decision({ ...contact, ...req.body, channel, message: req.body.message || req.body.intent || '' });
+    const reply = generateAna2Reply({ ...contact, ...req.body }, decision);
+    const runtime = await getAna2RuntimeState(channel);
+    res.json({
+      ok: true,
+      contact,
+      draft: {
+        channel,
+        body: reply,
+        should_send: runtime.can_send && Boolean(reply),
+        prompt_key: req.body.prompt_key || null,
+        safety_blocked_send: Boolean(reply) && !runtime.can_send,
+      },
+      decision,
+      runtime,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/ana2/n8n/action-result', requireSharedSecret, async (req, res, next) => {
+  try {
+    const contact = await upsertAna2Contact({ ...req.body, mode: req.body.mode || 'sandbox', source: req.body.source || 'n8n_sandbox_action_result' });
+    const channel = normalizeChannel(req.body.channel || 'system');
+    const body = req.body.body || req.body.message || req.body.reply || '';
+    const message = await logAna2Message(contact.id, req.body.direction || 'system', channel, body, {
+      status: req.body.status || null,
+      provider_message_id: req.body.provider_message_id || null,
+      outbox_id: req.body.outbox_id || null,
+      workflow_id: req.body.workflow_id || null,
+      execution_id: req.body.execution_id || null,
+    });
+    if (req.body.outbox_id) {
+      await pool.query('update asm_ana2_outbox set status = $1, updated_at = now() where id = $2', [req.body.status || 'sent', req.body.outbox_id]);
+    }
+    await pool.query(
+      `insert into asm_ana2_runs (contact_id, run_type, status, current_round, summary)
+       values ($1,'action_result',$2,$3,$4)`,
+      [
+        contact.id,
+        req.body.status || 'logged',
+        Number(req.body.round || req.body.current_round || 0) || 0,
+        { channel, action: req.body.action || null, message_id: message?.id || null },
+      ]
+    );
+    res.json({ ok: true, contact, message });
   } catch (error) {
     next(error);
   }

@@ -23,12 +23,28 @@ All cloned workflows were created inactive on August 24, 2026. Production workfl
 - Retell nodes show as unknown to the MCP validator because Retell is a community node, but they can run on the n8n instance where the package is installed.
 - The original cadence runner still shows maintainability warnings because it has 65 nodes and limited explicit error handling. ANA 2.0 moves decision logic and audit trails into the manager to reduce that risk.
 
+## Manager Wiring Status
+
+The first decision migration slice is active in the sandbox clones only:
+
+- `ANA 2.0 SANDBOX - Inbound SMS` now calls `POST https://control.blackbookproperties.com/api/ana2/n8n/inbound`.
+- `ANA 2.0 SANDBOX - Inbound Email` now calls `POST https://control.blackbookproperties.com/api/ana2/n8n/inbound`.
+- The old `Get Agent Config -> Qualify Agent -> Parse Reply` decision chain was removed from those two clones.
+- `Parse Reply` now normalizes the Manager response into the legacy fields downstream nodes already expect.
+- `ANA 2.0 Should Reply?` blocks real provider sends unless the Manager explicitly returns `shouldReply = true`.
+
+Manager authentication:
+
+- Header: `x-ana2-secret`
+- Value source in n8n: `N8N_SHARED_SECRET` from either n8n environment variables or n8n variables.
+
+This was done only on the clone workflows above. Production workflow IDs were not edited.
+
 ## Next Wiring Step
 
-The next safe step is to add a manager decision gate into each clone:
+Move cadence planning out of the sandbox dispatcher/cadence runner:
 
-- `POST https://control.blackbookproperties.com/api/ana2/n8n/evaluate`
-- Header: `x-ana2-secret`
-- Payload: contact, channel, inbound message, lead type, budget, rent, lease months, and current context.
-
-This must be done only on the clone workflows above.
+- Dispatcher asks `POST /api/ana2/n8n/cadence/next` for the current round.
+- Manager returns Day 1, Day 2, or Day 3 actions.
+- Cadence runner executes only the returned actions.
+- Runner logs provider results to `POST /api/ana2/n8n/action-result`.
