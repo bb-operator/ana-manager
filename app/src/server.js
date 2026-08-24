@@ -1646,13 +1646,17 @@ app.post('/api/ana2/n8n/action-result', requireSharedSecret, async (req, res, ne
     const contact = await upsertAna2Contact({ ...req.body, mode: req.body.mode || 'sandbox', source: req.body.source || 'n8n_sandbox_action_result' });
     const channel = normalizeChannel(req.body.channel || 'system');
     const body = req.body.body || req.body.message || req.body.reply || '';
-    const message = await logAna2Message(contact.id, req.body.direction || 'system', channel, body, {
+    const executionMetadata = {
       status: req.body.status || null,
       provider_message_id: req.body.provider_message_id || null,
       outbox_id: req.body.outbox_id || null,
       workflow_id: req.body.workflow_id || null,
       execution_id: req.body.execution_id || null,
-    });
+      fub_synced: req.body.fub_synced ?? null,
+      ana_touched_synced: req.body.ana_touched_synced ?? null,
+      reason: req.body.reason || null,
+    };
+    const message = await logAna2Message(contact.id, req.body.direction || 'system', channel, body, executionMetadata);
     if (req.body.outbox_id) {
       await pool.query('update asm_ana2_outbox set status = $1, updated_at = now() where id = $2', [req.body.status || 'sent', req.body.outbox_id]);
     }
@@ -1663,7 +1667,12 @@ app.post('/api/ana2/n8n/action-result', requireSharedSecret, async (req, res, ne
         contact.id,
         req.body.status || 'logged',
         Number(req.body.round || req.body.current_round || 0) || 0,
-        { channel, action: req.body.action || null, message_id: message?.id || null },
+        {
+          channel,
+          action: req.body.action || null,
+          message_id: message?.id || null,
+          ...executionMetadata,
+        },
       ]
     );
     res.json({ ok: true, contact, message });
