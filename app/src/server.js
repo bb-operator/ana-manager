@@ -342,6 +342,31 @@ function castForField(field) {
   return casts[field] || '';
 }
 
+function parsePgArray(value) {
+  if (Array.isArray(value)) return value;
+  if (value === null || value === undefined || value === '') return [];
+  if (typeof value !== 'string') return [value];
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return trimmed.split(',').map((item) => item.trim()).filter(Boolean);
+  return trimmed
+    .slice(1, -1)
+    .split(',')
+    .map((item) => item.replace(/^"|"$/g, '').trim())
+    .filter(Boolean);
+}
+
+function normalizeRow(row) {
+  const next = { ...row };
+  for (const field of ['actions', 'applies_to_channels', 'applies_to_lead_types', 'lead_types', 'event_types']) {
+    if (field in next) next[field] = parsePgArray(next[field]);
+  }
+  return next;
+}
+
+function normalizeRows(rows) {
+  return rows.map(normalizeRow);
+}
+
 app.use(basicAuth);
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -378,16 +403,16 @@ app.get('/api/dashboard', async (_req, res, next) => {
     ]);
 
     res.json({
-      emergency: emergency.rows,
-      rules: rules.rows,
-      cadences: cadences.rows,
-      providers: providers.rows,
-      slack: slack.rows,
-      errors: errors.rows,
-      decisions: decisions.rows,
-      tests: tests.rows,
-      workflows: workflows.rows,
-      cadenceSteps: cadenceSteps.rows,
+      emergency: normalizeRows(emergency.rows),
+      rules: normalizeRows(rules.rows),
+      cadences: normalizeRows(cadences.rows),
+      providers: normalizeRows(providers.rows),
+      slack: normalizeRows(slack.rows),
+      errors: normalizeRows(errors.rows),
+      decisions: normalizeRows(decisions.rows),
+      tests: normalizeRows(tests.rows),
+      workflows: normalizeRows(workflows.rows),
+      cadenceSteps: normalizeRows(cadenceSteps.rows),
     });
   } catch (error) {
     next(error);
@@ -406,7 +431,7 @@ app.post('/api/seed-defaults', async (_req, res, next) => {
 app.get('/api/test-leads', async (_req, res, next) => {
   try {
     const result = await pool.query('select * from asm_test_leads order by created_at desc limit 50');
-    res.json(result.rows);
+    res.json(normalizeRows(result.rows));
   } catch (error) {
     next(error);
   }
@@ -435,7 +460,7 @@ app.post('/api/test-leads', async (req, res, next) => {
         req.body.notes || null,
       ]
     );
-    res.json(result.rows[0]);
+    res.json(normalizeRow(result.rows[0]));
   } catch (error) {
     next(error);
   }
@@ -455,7 +480,7 @@ app.get('/api/:resource', async (req, res, next) => {
     if (!config) return next();
 
     const result = await pool.query(`select * from ${config.table} order by ${config.order}`);
-    res.json(result.rows);
+    res.json(normalizeRows(result.rows));
   } catch (error) {
     next(error);
   }
@@ -480,7 +505,7 @@ app.patch('/api/:resource/:id', async (req, res, next) => {
     );
 
     if (!result.rows[0]) return res.status(404).json({ error: 'Record not found' });
-    res.json(result.rows[0]);
+    res.json(normalizeRow(result.rows[0]));
   } catch (error) {
     next(error);
   }
@@ -503,7 +528,7 @@ app.post('/api/logs/test', async (req, res, next) => {
         req.body.reason || 'Manual log test from manager',
       ]
     );
-    res.json(result.rows[0]);
+    res.json(normalizeRow(result.rows[0]));
   } catch (error) {
     next(error);
   }

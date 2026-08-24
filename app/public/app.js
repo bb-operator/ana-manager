@@ -75,6 +75,17 @@ function actionLabel(action) {
   return actionOptions.find(([value]) => value === action)?.[1] || action;
 }
 
+function toArray(value) {
+  if (Array.isArray(value)) return value;
+  if (value === null || value === undefined || value === '') return [];
+  if (typeof value !== 'string') return [value];
+  const trimmed = value.trim();
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    return trimmed.slice(1, -1).split(',').map((item) => item.replace(/^"|"$/g, '').trim()).filter(Boolean);
+  }
+  return trimmed.split(',').map((item) => item.trim()).filter(Boolean);
+}
+
 function conditionText(rule) {
   const conditions = rule.conditions || {};
   const phrases = conditions.phrases || conditions.signals || [];
@@ -154,7 +165,7 @@ function renderDashboard() {
     <div class="summary-row">
       <div>
         <strong>${escapeHtml(ruleLabels[rule.key]?.title || rule.name_es)}</strong>
-        <span>${escapeHtml((rule.actions || []).map(actionLabel).join(' · '))}</span>
+        <span>${escapeHtml(toArray(rule.actions).map(actionLabel).join(' · '))}</span>
       </div>
       ${statusPill(rule.enabled)}
     </div>
@@ -205,7 +216,7 @@ function renderRules() {
         <div class="action-grid">
           ${actionOptions.map(([value, label]) => `
             <label class="check-chip">
-              <input type="checkbox" name="actions" value="${value}" ${checked(rule.actions, value)} />
+              <input type="checkbox" name="actions" value="${value}" ${checked(toArray(rule.actions), value)} />
               <span>${label}</span>
             </label>
           `).join('')}
@@ -341,9 +352,9 @@ function renderSlack() {
       <form class="operator-form" data-resource="slack" data-id="${route.id}">
         <div class="form-row">
           <label>Nombre visible<input name="channel_label" value="${escapeHtml(route.channel_label || '')}" /></label>
-          <label>Lead types<input name="lead_types" value="${escapeHtml((route.lead_types || []).join(', '))}" /></label>
+          <label>Lead types<input name="lead_types" value="${escapeHtml(toArray(route.lead_types).join(', '))}" /></label>
         </div>
-        <label>Eventos<input name="event_types" value="${escapeHtml((route.event_types || []).join(', '))}" /></label>
+        <label>Eventos<input name="event_types" value="${escapeHtml(toArray(route.event_types).join(', '))}" /></label>
         <label>Notas<textarea name="notes">${escapeHtml(route.notes || '')}</textarea></label>
         <button class="button primary">Guardar Slack route</button>
       </form>
