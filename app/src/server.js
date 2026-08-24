@@ -110,12 +110,12 @@ const defaultSeeds = {
   `,
   rules: `
     INSERT INTO asm_rules (key, name_en, name_es, priority, severity, conditions, actions, notes_en, notes_es) VALUES
-    ('agent_request_handoff', 'Agent request means immediate handoff', 'Solicitud de agente significa handoff inmediato', 10, 'critical', '{"phrases":["call me","agent","asap","showing","appointment","today","tomorrow","llamame","llamar","agente","cita"]}', ARRAY['handoff','mark_qualified','notify_slack','stop_cadence'], 'Do not keep asking budget after an agent request.', 'No seguir pidiendo presupuesto despues de solicitud de agente.'),
-    ('frustration_human_review', 'Frustration stops Ana', 'Frustracion detiene a Ana', 20, 'critical', '{"signals":["idiot","stop asking","another agent","angry","upset","stupid","fuck","mierda","idiota"]}', ARRAY['human_review','block_reply','stop_cadence','notify_slack'], 'Hostile/frustrated leads go to human review.', 'Leads molestos pasan a revision humana.'),
-    ('no_listing_promise', 'Ana cannot promise listings', 'Ana no puede prometer listings', 30, 'high', '{"listing_search_available":false}', ARRAY['block_reply'], 'Block any reply promising listings/options when no listing integration exists.', 'Bloquear promesas de listings/opciones si no existe integracion.'),
-    ('short_term_airbnb', 'Short-term/Airbnb is not a fit', 'Corto plazo/Airbnb no califica', 35, 'high', '{"phrases":["airbnb","short term","short-term","vacation rental","furnished","1 month","2 months","3 months","4 months","5 months","6 months"]}', ARRAY['mark_unqualified','stop_cadence'], 'Use honest short-term response and stop normal cadence.', 'Usar respuesta honesta de corto plazo y detener cadencia normal.'),
-    ('stop_after_handoff', 'Stop AI after handoff', 'Detener IA despues del handoff', 40, 'critical', '{"lead_state":["qualified","handed_off"]}', ARRAY['block_reply','stop_cadence'], 'Avoid duplicate or post-handoff AI replies.', 'Evitar respuestas duplicadas o posteriores al handoff.'),
-    ('respect_no_call', 'Respect no-call preference', 'Respetar preferencia sin llamada', 50, 'high', '{"phrases":["no call","dont call","do not call","text only","email only","no quiero llamada"]}', ARRAY['block_reply'], 'Do not ask for a call after no-call preference.', 'No pedir llamada si el lead dijo que no quiere llamada.')
+    ('agent_request_handoff', 'Agent request means immediate handoff', 'Solicitud de agente significa handoff inmediato', 10, 'critical', '{"phrases":["call me","agent","asap","showing","appointment","today","tomorrow","llamame","llamar","agente","cita"]}', ARRAY['handoff','mark_qualified','notify_slack','stop_cadence']::asm_rule_action[], 'Do not keep asking budget after an agent request.', 'No seguir pidiendo presupuesto despues de solicitud de agente.'),
+    ('frustration_human_review', 'Frustration stops Ana', 'Frustracion detiene a Ana', 20, 'critical', '{"signals":["idiot","stop asking","another agent","angry","upset","stupid","fuck","mierda","idiota"]}', ARRAY['human_review','block_reply','stop_cadence','notify_slack']::asm_rule_action[], 'Hostile/frustrated leads go to human review.', 'Leads molestos pasan a revision humana.'),
+    ('no_listing_promise', 'Ana cannot promise listings', 'Ana no puede prometer listings', 30, 'high', '{"listing_search_available":false}', ARRAY['block_reply']::asm_rule_action[], 'Block any reply promising listings/options when no listing integration exists.', 'Bloquear promesas de listings/opciones si no existe integracion.'),
+    ('short_term_airbnb', 'Short-term/Airbnb is not a fit', 'Corto plazo/Airbnb no califica', 35, 'high', '{"phrases":["airbnb","short term","short-term","vacation rental","furnished","1 month","2 months","3 months","4 months","5 months","6 months"]}', ARRAY['mark_unqualified','stop_cadence']::asm_rule_action[], 'Use honest short-term response and stop normal cadence.', 'Usar respuesta honesta de corto plazo y detener cadencia normal.'),
+    ('stop_after_handoff', 'Stop AI after handoff', 'Detener IA despues del handoff', 40, 'critical', '{"lead_state":["qualified","handed_off"]}', ARRAY['block_reply','stop_cadence']::asm_rule_action[], 'Avoid duplicate or post-handoff AI replies.', 'Evitar respuestas duplicadas o posteriores al handoff.'),
+    ('respect_no_call', 'Respect no-call preference', 'Respetar preferencia sin llamada', 50, 'high', '{"phrases":["no call","dont call","do not call","text only","email only","no quiero llamada"]}', ARRAY['block_reply']::asm_rule_action[], 'Do not ask for a call after no-call preference.', 'No pedir llamada si el lead dijo que no quiere llamada.')
     ON CONFLICT (key) DO NOTHING
   `,
   cadences: `
@@ -324,6 +324,19 @@ function normalizeJsonFields(payload) {
   return payload;
 }
 
+function castForField(field) {
+  const casts = {
+    actions: '::asm_rule_action[]',
+    applies_to_channels: '::asm_channel[]',
+    channel: '::asm_channel',
+    scope: '::asm_channel',
+    kind: '::asm_provider_kind',
+    severity: '::asm_rule_severity',
+    status: '::asm_log_status',
+  };
+  return casts[field] || '';
+}
+
 app.use(basicAuth);
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -397,7 +410,7 @@ app.post('/api/test-leads', async (req, res, next) => {
     const result = await pool.query(
       `insert into asm_test_leads
        (first_name, last_name, person_id, phone, email, lead_type, channel, message, budget, status, simulated_decision, notes)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       values ($1,$2,$3,$4,$5,$6,$7::asm_channel,$8,$9,$10,$11,$12)
        returning *`,
       [
         req.body.first_name || null,
@@ -449,7 +462,7 @@ app.patch('/api/:resource/:id', async (req, res, next) => {
     const entries = Object.entries(payload);
     if (!entries.length) return res.status(400).json({ error: 'No allowed fields provided' });
 
-    const assignments = entries.map(([field], index) => `${field} = $${index + 1}`).join(', ');
+    const assignments = entries.map(([field], index) => `${field} = $${index + 1}${castForField(field)}`).join(', ');
     const values = entries.map(([, value]) => value);
     values.push(req.params.id);
 
@@ -469,7 +482,7 @@ app.post('/api/logs/test', async (req, res, next) => {
   try {
     const result = await pool.query(
       `insert into asm_decision_logs (workflow_name, channel, lead_type, inbound_message, decision, action_taken, status, reason)
-       values ($1, $2, $3, $4, $5, $6, $7, $8)
+       values ($1, $2::asm_channel, $3, $4, $5, $6, $7::asm_log_status, $8)
        returning *`,
       [
         'Ana System Manager Test',

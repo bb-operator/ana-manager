@@ -42,7 +42,7 @@ services:
       SECRET: ${DIRECTUS_SECRET}
       ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL}
       ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD}
-      PUBLIC_URL: https://directus-${MANAGER_SUBDOMAIN}.${TRAEFIK_HOST}
+      PUBLIC_URL: http://directus:8055
       DB_CLIENT: pg
       DB_CONNECTION_STRING: ${DATABASE_URL}
       WEBSOCKETS_ENABLED: "true"
@@ -51,11 +51,7 @@ services:
       CORS_ORIGIN: "true"
       EXTENSIONS_AUTO_RELOAD: "false"
     labels:
-      - traefik.enable=true
-      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-directus.rule=Host(`directus-${MANAGER_SUBDOMAIN}.${TRAEFIK_HOST}`)
-      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-directus.entrypoints=websecure
-      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-directus.tls.certresolver=letsencrypt
-      - traefik.http.services.${COMPOSE_PROJECT_NAME}-directus.loadbalancer.server.port=8055
+      - traefik.enable=false
     depends_on:
       postgres:
         condition: service_healthy
