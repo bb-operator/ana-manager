@@ -5,40 +5,40 @@ const state = {
 
 const ruleLabels = {
   agent_request_handoff: {
-    title: 'Lead pide agente o llamada',
-    plain: 'Si alguien dice call me, agente, showing, ASAP o cita, Ana debe parar y mandar handoff.',
+    title: 'Agent or call request',
+    plain: 'If someone says call me, agent, showing, ASAP, or appointment, Ana must stop and route to handoff.',
   },
   frustration_human_review: {
-    title: 'Lead molesto o agresivo',
-    plain: 'Si el lead se frustra, insulta o amenaza con irse con otro agente, Ana se calla.',
+    title: 'Frustrated or hostile lead',
+    plain: 'If the lead is frustrated, insulting, or threatening to leave for another agent, Ana stops replying.',
   },
   no_listing_promise: {
-    title: 'No prometer listings',
-    plain: 'Ana no puede decir que enviará opciones/listings si no existe una integración real.',
+    title: 'No listing promises',
+    plain: 'Ana cannot say it will send listings or options unless a real listing integration exists.',
   },
   short_term_airbnb: {
-    title: 'Airbnb / corto plazo',
-    plain: 'Si busca Airbnb, furnished o menos de 12 meses, Ana debe ser honesta y detener cadencia normal.',
+    title: 'Airbnb / short term',
+    plain: 'If the lead is looking for Airbnb, furnished, or under 12 months, Ana must be honest and stop the normal cadence.',
   },
   stop_after_handoff: {
-    title: 'Parar después de handoff',
-    plain: 'Cuando el lead ya fue handed off o qualified, Ana no debe seguir respondiendo.',
+    title: 'Stop after handoff',
+    plain: 'Once the lead is handed off or qualified, Ana should not keep replying.',
   },
   respect_no_call: {
-    title: 'Respetar “no llamada”',
-    plain: 'Si el lead dice que no quiere llamada, Ana no debe volver a pedir llamada.',
+    title: 'Respect no-call preference',
+    plain: 'If the lead says they do not want a call, Ana should not ask for one again.',
   },
 };
 
 const actionOptions = [
-  ['handoff', 'Enviar a humano'],
-  ['mark_qualified', 'Marcar qualified'],
-  ['notify_slack', 'Mandar Slack'],
-  ['stop_cadence', 'Parar cadencia'],
-  ['block_reply', 'Bloquear respuesta'],
-  ['human_review', 'Revisión humana'],
-  ['mark_unqualified', 'Marcar no calificado'],
-  ['allow_reply', 'Permitir respuesta'],
+  ['handoff', 'Send to Human'],
+  ['mark_qualified', 'Mark Qualified'],
+  ['notify_slack', 'Notify Slack'],
+  ['stop_cadence', 'Stop Cadence'],
+  ['block_reply', 'Block Reply'],
+  ['human_review', 'Human Review'],
+  ['mark_unqualified', 'Mark Unqualified'],
+  ['allow_reply', 'Allow Reply'],
 ];
 
 const channelOptions = [
@@ -48,26 +48,26 @@ const channelOptions = [
 ];
 
 const promptOptions = [
-  ['sms_inbound_decision', 'Decision SMS entrante'],
-  ['email_inbound_decision', 'Decision email entrante'],
-  ['call_result_decision', 'Decision llamada'],
-  ['first_touch_sms', 'Primer toque SMS'],
-  ['first_touch_email', 'Primer toque email'],
-  ['airbnb_short_term_email', 'Airbnb / corto plazo'],
-  ['round2_sms', 'SMS dia 2'],
-  ['round2_email', 'Email dia 2'],
-  ['final_exit_email', 'Email salida final'],
+  ['sms_inbound_decision', 'Inbound SMS Decision'],
+  ['email_inbound_decision', 'Inbound Email Decision'],
+  ['call_result_decision', 'Call Decision'],
+  ['first_touch_sms', 'First Touch SMS'],
+  ['first_touch_email', 'First Touch Email'],
+  ['airbnb_short_term_email', 'Airbnb / Short Term'],
+  ['round2_sms', 'Day 2 SMS'],
+  ['round2_email', 'Day 2 Email'],
+  ['final_exit_email', 'Final Exit Email'],
 ];
 
 const ana2ActionLabels = {
-  continue_qualification: 'Continuar calificacion',
+  continue_qualification: 'Continue Qualification',
   qualified_handoff: 'Qualified + handoff',
-  handoff_review: 'Handoff review',
-  human_review: 'Revision humana',
-  budget_review: 'Revision por budget',
-  short_term_unqualified: 'Corto plazo no califica',
+  handoff_review: 'Handoff Review',
+  human_review: 'Human Review',
+  budget_review: 'Budget Review',
+  short_term_unqualified: 'Short Term Not Qualified',
   opt_out: 'Opt out',
-  log_only: 'Solo log',
+  log_only: 'Log Only',
 };
 
 const dom = (selector) => document.querySelector(selector);
@@ -83,7 +83,7 @@ async function api(path, options = {}) {
 }
 
 async function confirmChange(message) {
-  dom('#confirmMessage').textContent = message || 'Vas a cambiar una configuración de Ana.';
+  dom('#confirmMessage').textContent = message || 'You are about to change an Ana setting.';
   const dialog = dom('#confirmDialog');
   dialog.showModal();
   return new Promise((resolve) => {
@@ -92,7 +92,7 @@ async function confirmChange(message) {
 }
 
 function money(value) {
-  if (!value) return 'Sin límite';
+  if (!value) return 'No limit';
   return Number(value).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 }
 
@@ -130,6 +130,16 @@ function selected(current, value) {
   return current === value ? 'selected' : '';
 }
 
+function slugify(value) {
+  return String(value || 'item')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 48) || 'item';
+}
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -140,33 +150,33 @@ function escapeHtml(value) {
 
 function cadenceStepLabel(stepNumber) {
   const labels = {
-    1: 'Dia 1',
-    2: 'Dia 2',
-    3: 'Salida final',
+    1: 'Day 1',
+    2: 'Day 2',
+    3: 'Final Exit',
   };
-  return labels[Number(stepNumber)] || `Paso ${stepNumber}`;
+  return labels[Number(stepNumber)] || `Step ${stepNumber}`;
 }
 
 function delayLabel(minutes) {
   const value = Number(minutes || 0);
-  if (value === 0) return 'Inmediato';
-  if (value % 1440 === 0) return `${value / 1440} dia${value / 1440 === 1 ? '' : 's'}`;
-  if (value % 60 === 0) return `${value / 60} hora${value / 60 === 1 ? '' : 's'}`;
+  if (value === 0) return 'Immediate';
+  if (value % 1440 === 0) return `${value / 1440} day${value / 1440 === 1 ? '' : 's'}`;
+  if (value % 60 === 0) return `${value / 60} hour${value / 60 === 1 ? '' : 's'}`;
   return `${value} min`;
 }
 
 function renderDecision(target, decision) {
   const actionTitles = {
-    handoff: 'Handoff inmediato',
-    human_review: 'Revisión humana',
-    mark_unqualified: 'No calificado',
-    budget_review: 'Revisión por presupuesto',
-    continue_qualification: 'Continuar calificación',
-    respect_channel_preference: 'Respetar canal preferido',
-    short_term_unqualified: 'Corto plazo no califica',
+    handoff: 'Immediate Handoff',
+    human_review: 'Human Review',
+    mark_unqualified: 'Not Qualified',
+    budget_review: 'Budget Review',
+    continue_qualification: 'Continue Qualification',
+    respect_channel_preference: 'Respect Channel Preference',
+    short_term_unqualified: 'Short Term Not Qualified',
     qualified_handoff: 'Qualified + handoff',
-    handoff_review: 'Handoff review',
-    log_only: 'Solo log',
+    handoff_review: 'Handoff Review',
+    log_only: 'Log Only',
     opt_out: 'Opt out',
   };
   const stopFlag = decision.stop_ai ?? decision.stop_cadence ?? false;
@@ -178,14 +188,14 @@ function renderDecision(target, decision) {
       ${statusPill(!stopFlag)}
     </div>
     <div class="decision-grid">
-      <div><small>Ana responde</small><strong>${decision.should_reply ? 'Sí' : 'No'}</strong></div>
-      <div><small>Qualified</small><strong>${decision.qualified ? 'Sí' : 'No'}</strong></div>
-      <div><small>Slack</small><strong>${slackFlag ? 'Sí' : 'No'}</strong></div>
-      <div><small>Stop</small><strong>${stopFlag ? 'Sí' : 'No'}</strong></div>
+      <div><small>Ana Replies</small><strong>${decision.should_reply ? 'Yes' : 'No'}</strong></div>
+      <div><small>Qualified</small><strong>${decision.qualified ? 'Yes' : 'No'}</strong></div>
+      <div><small>Slack</small><strong>${slackFlag ? 'Yes' : 'No'}</strong></div>
+      <div><small>Stop</small><strong>${stopFlag ? 'Yes' : 'No'}</strong></div>
     </div>
-    <p>${escapeHtml(decision.reason || 'Sin razón registrada.')}</p>
+    <p>${escapeHtml(decision.reason || 'No reason recorded.')}</p>
     <details>
-      <summary>Ver JSON técnico</summary>
+      <summary>View Technical JSON</summary>
       <pre>${escapeHtml(JSON.stringify(decision, null, 2))}</pre>
     </details>
   `;
@@ -208,10 +218,10 @@ function renderMetrics() {
   const outboxDrafts = (data.ana2Outbox || []).filter((item) => item.status === 'draft').length;
   const recentDecisions = data.ana2Decisions?.length || 0;
   dom('#metricGrid').innerHTML = `
-    <article class="metric"><span>${activeRules}</span><p>Reglas activas</p></article>
-    <article class="metric"><span>${ana2Contacts}</span><p>Contactos Ana 2.0</p></article>
-    <article class="metric"><span>${outboxDrafts}</span><p>Drafts en outbox</p></article>
-    <article class="metric"><span>${recentDecisions}</span><p>Decisiones auditadas</p></article>
+    <article class="metric"><span>${activeRules}</span><p>Active Rules</p></article>
+    <article class="metric"><span>${ana2Contacts}</span><p>Ana 2.0 Contacts</p></article>
+    <article class="metric"><span>${outboxDrafts}</span><p>Outbox Drafts</p></article>
+    <article class="metric"><span>${recentDecisions}</span><p>Audited Decisions</p></article>
   `;
 }
 
@@ -221,7 +231,7 @@ function renderDashboard() {
   dom('#criticalRules').innerHTML = state.data.rules.slice(0, 6).map((rule) => `
     <div class="summary-row">
       <div>
-        <strong>${escapeHtml(ruleLabels[rule.key]?.title || rule.name_es)}</strong>
+        <strong>${escapeHtml(ruleLabels[rule.key]?.title || rule.name_en || rule.name_es)}</strong>
         <span>${escapeHtml(toArray(rule.actions).map(actionLabel).join(' · '))}</span>
       </div>
       ${statusPill(rule.enabled)}
@@ -242,8 +252,8 @@ function renderSystem() {
   dom('#systemControls').innerHTML = (state.data.emergency || []).map((control) => `
     <article class="control-card ${control.enabled ? '' : 'danger-zone'}">
       <div>
-        <h3>${escapeHtml(control.label_es || control.key)}</h3>
-        <p>${control.scope === 'system' ? 'Control global' : `Canal ${control.scope.toUpperCase()}`}</p>
+        <h3>${escapeHtml(control.label_en || control.label_es || control.key)}</h3>
+        <p>${control.scope === 'system' ? 'Global control' : `${control.scope.toUpperCase()} channel`}</p>
       </div>
       <label class="toggle">
         <input type="checkbox" data-resource="emergency" data-id="${control.id}" data-field="enabled" ${control.enabled ? 'checked' : ''} />
@@ -270,15 +280,15 @@ function renderSettings() {
       <label>Buyer/Seller max budget
         <input name="buyer_seller_max" type="number" value="${escapeHtml(budgetCap.buyer_seller_max ?? 2000000)}" />
       </label>
-      <label>Renter lease minimo meses
+      <label>Renter minimum lease months
         <input name="renter_min_lease_months" type="number" value="${escapeHtml(renterMinLease.value ?? 12)}" />
       </label>
     </div>
     <div class="form-row">
-      <label>Tag disparador sandbox
+      <label>Sandbox trigger tag
         <input name="ana2_trigger_tag" value="${escapeHtml(triggerTag.value || 'Ana 2.0 Test')}" />
       </label>
-      <label>Modo
+      <label>Mode
         <select name="ana2_mode">
           <option value="sandbox" ${selected(safety.mode, 'sandbox')}>Sandbox</option>
           <option value="production" ${selected(safety.mode, 'production')}>Production</option>
@@ -288,16 +298,16 @@ function renderSettings() {
     <div class="action-grid">
       <label class="check-chip">
         <input type="checkbox" name="real_sends_enabled" value="true" ${safety.real_sends_enabled ? 'checked' : ''} />
-        <span>Permitir envios reales</span>
+        <span>Allow Real Sends</span>
       </label>
       <label class="check-chip">
         <input type="checkbox" name="fub_writes_enabled" value="true" ${safety.fub_writes_enabled ? 'checked' : ''} />
-        <span>Permitir writes a FUB</span>
+        <span>Allow FUB Writes</span>
       </label>
     </div>
     <div class="form-footer">
-      <span>Recomendado ahora: sandbox, envios reales OFF, FUB writes OFF.</span>
-      <button class="button primary">Guardar settings Ana 2.0</button>
+      <span>Recommended now: sandbox, real sends OFF, FUB writes OFF.</span>
+      <button class="button primary">Save Ana 2.0 Settings</button>
     </div>
   `;
 }
@@ -307,17 +317,17 @@ function renderRules() {
     <article class="operator-card create-card">
       <div class="operator-head">
         <div>
-          <h3>Nueva regla</h3>
-          <p>Crea una condicion simple que Ana pueda evaluar antes de responder.</p>
+          <h3>New Rule</h3>
+          <p>Create a simple condition Ana can evaluate before replying.</p>
         </div>
       </div>
       <form class="operator-form" data-create-resource="rules">
         <div class="form-row">
-          <label>Nombre de la regla<input name="name_es" placeholder="Ej: Lead quiere tour hoy" required /></label>
-          <label>Prioridad<input name="priority" type="number" value="90" /></label>
+          <label>Rule Name<input name="name_en" placeholder="Example: Lead wants a tour today" required /></label>
+          <label>Priority<input name="priority" type="number" value="90" /></label>
         </div>
-        <label>Frases / señales separadas por coma
-          <textarea name="phrases" placeholder="tour today, showing, quiero ver la propiedad"></textarea>
+        <label>Comma-separated phrases / signals
+          <textarea name="phrases" placeholder="tour today, showing, wants to see the property"></textarea>
         </label>
         <div class="action-grid">
           ${actionOptions.map(([value, label]) => `
@@ -328,8 +338,8 @@ function renderRules() {
           `).join('')}
         </div>
         <div class="form-footer">
-          <span>La regla queda activa y con confirmacion requerida.</span>
-          <button class="button primary">Crear regla</button>
+          <span>The rule is active by default and requires confirmation.</span>
+          <button class="button primary">Create Rule</button>
         </div>
       </form>
     </article>
@@ -339,8 +349,8 @@ function renderRules() {
     <article class="operator-card">
       <div class="operator-head">
         <div>
-          <h3>${escapeHtml(ruleLabels[rule.key]?.title || rule.name_es)}</h3>
-          <p>${escapeHtml(ruleLabels[rule.key]?.plain || rule.notes_es || '')}</p>
+          <h3>${escapeHtml(ruleLabels[rule.key]?.title || rule.name_en || rule.name_es)}</h3>
+          <p>${escapeHtml(ruleLabels[rule.key]?.plain || rule.notes_en || rule.notes_es || '')}</p>
         </div>
         <label class="toggle">
           <input type="checkbox" data-resource="rules" data-id="${rule.id}" data-field="enabled" ${rule.enabled ? 'checked' : ''} />
@@ -348,7 +358,7 @@ function renderRules() {
         </label>
       </div>
       <form class="operator-form" data-resource="rules" data-id="${rule.id}">
-        <label>Frases / señales que activan esta regla
+        <label>Phrases / signals that trigger this rule
           <textarea name="phrases">${escapeHtml(conditionText(rule))}</textarea>
         </label>
         <div class="action-grid">
@@ -360,8 +370,8 @@ function renderRules() {
           `).join('')}
         </div>
         <div class="form-footer">
-          <span>Prioridad ${rule.priority} · ${rule.severity}</span>
-          <button class="button primary">Guardar regla</button>
+          <span>Priority ${rule.priority} · ${rule.severity}</span>
+          <button class="button primary">Save Rule</button>
         </div>
       </form>
     </article>
@@ -388,7 +398,7 @@ function renderCadences() {
         <div class="operator-head">
           <div>
             <h3>${cadence.lead_type.toUpperCase()}</h3>
-            <p>${escapeHtml(cadence.name_es || cadence.name_en)} · Round 1 email/SMS/call, Round 2 email/SMS/call, Round 3 salida final.</p>
+            <p>${escapeHtml(cadence.name_en || cadence.name_es)} · Round 1 email/SMS/call, Round 2 email/SMS/call, Round 3 final exit.</p>
           </div>
           <label class="toggle">
             <input type="checkbox" data-resource="cadences" data-id="${cadence.id}" data-field="enabled" ${cadence.enabled ? 'checked' : ''} />
@@ -397,35 +407,35 @@ function renderCadences() {
         </div>
         <form class="operator-form" data-resource="cadences" data-id="${cadence.id}">
           <div class="form-row">
-            <label>Budget mínimo<input name="min_budget" type="number" value="${cadence.min_budget || ''}" placeholder="sin mínimo" /></label>
-            <label>Budget máximo<input name="max_budget" type="number" value="${cadence.max_budget || ''}" placeholder="sin máximo" /></label>
+            <label>Minimum Budget<input name="min_budget" type="number" value="${cadence.min_budget || ''}" placeholder="no minimum" /></label>
+            <label>Maximum Budget<input name="max_budget" type="number" value="${cadence.max_budget || ''}" placeholder="no maximum" /></label>
           </div>
           <div class="budget-note">Rango actual: ${money(cadence.min_budget)} a ${money(cadence.max_budget)}</div>
           <div class="form-footer">
             <span>Stop: replied, qualified, handed off, review</span>
-            <button class="button primary">Guardar cadencia</button>
+            <button class="button primary">Save Cadence</button>
           </div>
         </form>
         <div class="round-grid">
           ${[1, 2, 3].map((round) => `
             <section class="round-card">
               <div class="round-title">
-                <strong>${round === 3 ? 'Dia 3' : `Dia ${round}`}</strong>
-                <span>${round === 3 ? 'Salida final' : 'Email + SMS + llamada'}</span>
+                <strong>${round === 3 ? 'Day 3' : `Day ${round}`}</strong>
+                <span>${round === 3 ? 'Final exit' : 'Email + SMS + call'}</span>
               </div>
               <div class="step-list">
                 ${(rounds[round] || []).map((action) => `
                   <form class="step-editor" data-resource="cadenceActions" data-id="${action.id}">
                     <div>
-                      <strong>${escapeHtml(action.label_es || `${action.channel} ${action.action_order}`)}</strong>
+                      <strong>${escapeHtml(action.label_en || action.label_es || `${action.channel} ${action.action_order}`)}</strong>
                       <small>${delayLabel(action.delay_minutes)} · ${action.channel.toUpperCase()}</small>
                     </div>
-                    <label>Canal
+                    <label>Channel
                       <select name="channel">
                         ${channelOptions.map(([value, label]) => `<option value="${value}" ${selected(action.channel, value)}>${label}</option>`).join('')}
                       </select>
                     </label>
-                    <label>Delay minutos
+                    <label>Delay Minutes
                       <input name="delay_minutes" type="number" value="${action.delay_minutes || 0}" />
                     </label>
                     <label>Prompt
@@ -437,9 +447,9 @@ function renderCadences() {
                       <input type="checkbox" data-resource="cadenceActions" data-id="${action.id}" data-field="enabled" ${action.enabled ? 'checked' : ''} />
                       <span></span>
                     </label>
-                    <button class="button secondary">Guardar</button>
+                    <button class="button secondary">Save</button>
                   </form>
-                `).join('') || '<p class="empty">Sin acciones para este round.</p>'}
+                `).join('') || '<p class="empty">No actions for this round.</p>'}
               </div>
             </section>
           `).join('')}
@@ -454,23 +464,23 @@ function renderPrompts() {
     <article class="operator-card create-card">
       <div class="operator-head">
         <div>
-          <h3>Nuevo prompt</h3>
-          <p>Crea un texto reusable para SMS, email, llamada o reglas del sistema.</p>
+          <h3>New Prompt</h3>
+          <p>Create reusable text for SMS, email, calls, or system-level rules.</p>
         </div>
       </div>
       <form class="operator-form" data-create-resource="prompts">
         <div class="form-row">
-          <label>Nombre<input name="name_es" placeholder="Ej: Follow-up dia 2 renter" required /></label>
-          <label>Canal
+          <label>Name<input name="name_en" placeholder="Example: Day 2 renter follow-up" required /></label>
+          <label>Channel
             <select name="channel">
               ${channelOptions.map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}
             </select>
           </label>
         </div>
         <label>Prompt
-          <textarea name="prompt_text" class="prompt-box" placeholder="Escribe aqui la instruccion exacta que Ana debe usar."></textarea>
+          <textarea name="prompt_text" class="prompt-box" placeholder="Write the exact instruction Ana should use."></textarea>
         </label>
-        <button class="button primary">Crear prompt</button>
+        <button class="button primary">Create Prompt</button>
       </form>
     </article>
   `;
@@ -479,7 +489,7 @@ function renderPrompts() {
     <article class="operator-card">
       <div class="operator-head">
         <div>
-          <h3>${escapeHtml(prompt.name_es || prompt.name_en)}</h3>
+          <h3>${escapeHtml(prompt.name_en || prompt.name_es)}</h3>
           <p>${prompt.channel || 'system'} · version ${prompt.version}</p>
         </div>
         <label class="toggle">
@@ -492,8 +502,8 @@ function renderPrompts() {
           <textarea name="prompt_text" class="prompt-box">${escapeHtml(prompt.prompt_text || '')}</textarea>
         </label>
         <div class="form-footer">
-          <span>Este texto será la fuente central para n8n cuando lo conectemos.</span>
-          <button class="button primary">Guardar prompt</button>
+          <span>This text becomes the central source for n8n once the sandbox is wired.</span>
+          <button class="button primary">Save Prompt</button>
         </div>
       </form>
     </article>
@@ -506,15 +516,15 @@ function renderProviders() {
   dom('#channelCards').innerHTML = state.data.channels.map((channel) => `
     <article class="operator-card compact">
       <div class="operator-head">
-        <div><h3>${channel.channel.toUpperCase()}</h3><p>Máx respuestas auto: ${channel.max_auto_replies_per_conversation}</p></div>
+        <div><h3>${channel.channel.toUpperCase()}</h3><p>Max auto replies: ${channel.max_auto_replies_per_conversation}</p></div>
         <label class="toggle">
           <input type="checkbox" data-resource="channels" data-id="${channel.id}" data-field="enabled" ${channel.enabled ? 'checked' : ''} />
           <span></span>
         </label>
       </div>
       <form class="operator-form" data-resource="channels" data-id="${channel.id}">
-        <label>Máx respuestas automáticas<input name="max_auto_replies_per_conversation" type="number" value="${channel.max_auto_replies_per_conversation}" /></label>
-        <button class="button primary">Guardar canal</button>
+        <label>Max Automatic Replies<input name="max_auto_replies_per_conversation" type="number" value="${channel.max_auto_replies_per_conversation}" /></label>
+        <button class="button primary">Save Channel</button>
       </form>
     </article>
   `).join('');
@@ -529,9 +539,9 @@ function renderProviders() {
         </label>
       </div>
       <form class="operator-form" data-resource="providers" data-id="${provider.id}">
-        <label>Nombre visible<input name="name" value="${escapeHtml(provider.name)}" /></label>
-        <label>Notas<textarea name="notes">${escapeHtml(provider.notes || '')}</textarea></label>
-        <button class="button primary">Guardar proveedor</button>
+        <label>Display Name<input name="name" value="${escapeHtml(provider.name)}" /></label>
+        <label>Notes<textarea name="notes">${escapeHtml(provider.notes || '')}</textarea></label>
+        <button class="button primary">Save Provider</button>
       </form>
     </article>
   `).join('');
@@ -542,21 +552,21 @@ function renderSlack() {
     <article class="operator-card create-card">
       <div class="operator-head">
         <div>
-          <h3>Nueva ruta Slack</h3>
-          <p>Define a donde van qualified, handoff, errores o revision humana.</p>
+          <h3>New Slack Route</h3>
+          <p>Define where qualified, handoff, error, or human-review events should go.</p>
         </div>
       </div>
       <form class="operator-form" data-create-resource="slack">
         <div class="form-row">
-          <label>Nombre visible<input name="channel_label" placeholder="Buyer/Seller Channel" required /></label>
+          <label>Display Name<input name="channel_label" placeholder="Buyer/Seller Channel" required /></label>
           <label>Webhook secret/env key<input name="webhook_secret_key" placeholder="SLACK_BUYER_SELLER_WEBHOOK" required /></label>
         </div>
         <div class="form-row">
           <label>Lead types<input name="lead_types" value="buyer, seller" /></label>
-          <label>Eventos<input name="event_types" value="qualified, handoff" /></label>
+          <label>Events<input name="event_types" value="qualified, handoff" /></label>
         </div>
-        <label>Notas<textarea name="notes" placeholder="Para que usamos este canal."></textarea></label>
-        <button class="button primary">Crear ruta Slack</button>
+        <label>Notes<textarea name="notes" placeholder="What this route is used for."></textarea></label>
+        <button class="button primary">Create Slack Route</button>
       </form>
     </article>
   `;
@@ -575,15 +585,15 @@ function renderSlack() {
       </div>
       <form class="operator-form" data-resource="slack" data-id="${route.id}">
         <div class="form-row">
-          <label>Nombre visible<input name="channel_label" value="${escapeHtml(route.channel_label || '')}" /></label>
+          <label>Display Name<input name="channel_label" value="${escapeHtml(route.channel_label || '')}" /></label>
           <label>Lead types<input name="lead_types" value="${escapeHtml(toArray(route.lead_types).join(', '))}" /></label>
         </div>
         <div class="form-row">
-          <label>Eventos<input name="event_types" value="${escapeHtml(toArray(route.event_types).join(', '))}" /></label>
+          <label>Events<input name="event_types" value="${escapeHtml(toArray(route.event_types).join(', '))}" /></label>
           <label>Webhook secret/env key<input name="webhook_secret_key" value="${escapeHtml(route.webhook_secret_key || '')}" /></label>
         </div>
-        <label>Notas<textarea name="notes">${escapeHtml(route.notes || '')}</textarea></label>
-        <button class="button primary">Guardar Slack route</button>
+        <label>Notes<textarea name="notes">${escapeHtml(route.notes || '')}</textarea></label>
+        <button class="button primary">Save Slack Route</button>
       </form>
     </article>
   `).join('');
@@ -598,7 +608,7 @@ function renderAna2() {
   if (select) {
     select.innerHTML = contacts.length ? contacts.map((contact) => `
       <option value="${contact.id}">${escapeHtml(contact.name || contact.person_id || contact.email || contact.id)} · ${escapeHtml(contact.lead_type)}</option>
-    `).join('') : '<option value="">Crea un contacto primero</option>';
+    `).join('') : '<option value="">Create a contact first</option>';
   }
 
   dom('#ana2Contacts').innerHTML = contacts.length ? contacts.map((contact) => `
@@ -609,7 +619,7 @@ function renderAna2() {
       </div>
       ${statusPill(contact.mode === 'sandbox')}
     </button>
-  `).join('') : '<div class="empty">Crea el primer contacto sandbox.</div>';
+  `).join('') : '<div class="empty">Create the first sandbox contact.</div>';
 
   dom('#ana2Decisions').innerHTML = decisions.length ? decisions.slice(0, 12).map((decision) => `
     <article class="decision-row">
@@ -622,7 +632,7 @@ function renderAna2() {
         <small>${escapeHtml(decision.channel)} · ${new Date(decision.created_at).toLocaleString()}</small>
       </div>
     </article>
-  `).join('') : '<div class="empty">Todavia no hay decisiones Ana 2.0.</div>';
+  `).join('') : '<div class="empty">No Ana 2.0 decisions yet.</div>';
 }
 
 function renderAna2Outbox() {
@@ -637,7 +647,7 @@ function renderAna2Outbox() {
         ${statusPill(item.status === 'draft')}
       </div>
       <form class="operator-form" data-outbox-id="${item.id}">
-        <label>Mensaje
+        <label>Message
           <textarea name="body">${escapeHtml(item.body || '')}</textarea>
         </label>
         <div class="form-row">
@@ -646,12 +656,12 @@ function renderAna2Outbox() {
               ${['draft', 'approved', 'blocked', 'sent'].map((status) => `<option value="${status}" ${selected(item.status, status)}>${status}</option>`).join('')}
             </select>
           </label>
-          <label>Scheduled for<input name="scheduled_for" value="${escapeHtml(item.scheduled_for || '')}" placeholder="opcional" /></label>
+          <label>Scheduled For<input name="scheduled_for" value="${escapeHtml(item.scheduled_for || '')}" placeholder="optional" /></label>
         </div>
-        <button class="button primary">Guardar outbox</button>
+        <button class="button primary">Save Outbox</button>
       </form>
     </article>
-  `).join('') : '<div class="empty">Sin drafts todavia. Simula un inbound en Ana 2.0.</div>';
+  `).join('') : '<div class="empty">No drafts yet. Simulate an inbound message in Ana 2.0.</div>';
 }
 
 function renderTables() {
@@ -661,7 +671,7 @@ function renderTables() {
 
 function renderTable(target, rows, fields) {
   if (!rows.length) {
-    dom(target).innerHTML = '<div class="empty">Sin registros todavía.</div>';
+    dom(target).innerHTML = '<div class="empty">No records yet.</div>';
     return;
   }
   dom(target).innerHTML = `
@@ -692,8 +702,22 @@ function payloadFromForm(form) {
     const actions = data.getAll('actions');
     const phrases = String(payload.phrases || '').split(',').map((item) => item.trim()).filter(Boolean);
     delete payload.phrases;
+    payload.key ||= slugify(payload.name_en || payload.name_es);
     payload.actions = actions;
     payload.conditions = { phrases };
+    payload.name_es ||= payload.name_en;
+    payload.notes_en ||= '';
+    payload.notes_es ||= payload.notes_en;
+  }
+
+  if (resource === 'prompts') {
+    payload.key ||= slugify(payload.name_en || payload.name_es);
+    payload.name_es ||= payload.name_en;
+    payload.output_contract ||= {};
+  }
+
+  if (resource === 'slack') {
+    payload.name ||= slugify(payload.channel_label || 'slack_route');
   }
 
   ['lead_types', 'event_types'].forEach((field) => {
@@ -741,7 +765,7 @@ async function loadAll() {
   renderAna2();
   renderAna2Outbox();
   renderTables();
-  setStatus(true, 'Sistema cargado');
+  setStatus(true, 'System loaded');
 }
 
 function activate(view) {
@@ -758,7 +782,7 @@ function wireEvents() {
 
   dom('#refreshButton').addEventListener('click', loadAll);
   dom('#seedButton').addEventListener('click', async () => {
-    if (!(await confirmChange('Esto cargará la configuración base de Ana si falta algo.'))) return;
+    if (!(await confirmChange('This will load Ana base configuration when records are missing.'))) return;
     await api('/api/seed-defaults', { method: 'POST', body: '{}' });
     await loadAll();
   });
@@ -766,8 +790,8 @@ function wireEvents() {
   document.body.addEventListener('change', async (event) => {
     const input = event.target.closest('input[data-resource][data-field]');
     if (!input) return;
-    const label = input.checked ? 'activar' : 'apagar';
-    if (!(await confirmChange(`Confirmar ${label} este control.`))) {
+    const label = input.checked ? 'enable' : 'disable';
+    if (!(await confirmChange(`Confirm ${label} this control.`))) {
       input.checked = !input.checked;
       return;
     }
@@ -778,7 +802,7 @@ function wireEvents() {
   document.body.addEventListener('submit', async (event) => {
     if (event.target.id === 'ana2SettingsForm') {
       event.preventDefault();
-      if (!(await confirmChange('Guardar settings base de Ana 2.0.'))) return;
+      if (!(await confirmChange('Save Ana 2.0 base settings.'))) return;
       const data = new FormData(event.target);
       await Promise.all([
         api('/api/settings/qualified_budget_cap', {
@@ -810,7 +834,7 @@ function wireEvents() {
 
     if (event.target.id === 'ana2ContactForm') {
       event.preventDefault();
-      if (!(await confirmChange('Crear o actualizar este contacto sandbox de Ana 2.0.'))) return;
+      if (!(await confirmChange('Create or update this Ana 2.0 sandbox contact.'))) return;
       await api('/api/ana2/contacts', {
         method: 'POST',
         body: JSON.stringify(payloadFromForm(event.target)),
@@ -835,7 +859,7 @@ function wireEvents() {
     const outboxForm = event.target.closest('form[data-outbox-id]');
     if (outboxForm) {
       event.preventDefault();
-      if (!(await confirmChange('Guardar este draft de Ana 2.0.'))) return;
+      if (!(await confirmChange('Save this Ana 2.0 draft.'))) return;
       await api(`/api/ana2/outbox/${outboxForm.dataset.outboxId}`, {
         method: 'PATCH',
         body: JSON.stringify(payloadFromForm(outboxForm)),
@@ -847,7 +871,7 @@ function wireEvents() {
     const createForm = event.target.closest('form[data-create-resource]');
     if (createForm) {
       event.preventDefault();
-      if (!(await confirmChange('Crear este nuevo control en Ana Manager.'))) return;
+      if (!(await confirmChange('Create this new Ana Manager control.'))) return;
       await create(createForm.dataset.createResource, payloadFromForm(createForm));
       createForm.reset();
       await loadAll();
@@ -857,7 +881,7 @@ function wireEvents() {
     const form = event.target.closest('form[data-resource]');
     if (!form) return;
     event.preventDefault();
-    if (!(await confirmChange('Guardar este cambio en Ana Manager.'))) return;
+    if (!(await confirmChange('Save this change in Ana Manager.'))) return;
     await patch(form.dataset.resource, form.dataset.id, payloadFromForm(form));
     await loadAll();
   });
@@ -884,6 +908,6 @@ function wireEvents() {
 
 wireEvents();
 loadAll().catch((error) => {
-  setStatus(false, 'Error cargando');
+  setStatus(false, 'Loading error');
   document.body.insertAdjacentHTML('beforeend', `<pre class="fatal">${escapeHtml(error.message)}</pre>`);
 });

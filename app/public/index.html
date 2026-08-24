@@ -1,49 +1,49 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Ana System Manager</title>
+    <title>Ana 2.0 Control Center</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <aside class="rail">
       <div class="brand">
-        <span class="brand-mark">A</span>
+        <span class="brand-mark">BB</span>
         <div>
-          <strong>Ana Manager</strong>
-          <small>Blackbook AI Ops</small>
+          <strong>Ana 2.0</strong>
+          <small>Blackbook AI Operations</small>
         </div>
       </div>
       <nav>
         <button class="nav active" data-view="dashboard">Command</button>
         <button class="nav" data-view="ana2">Ana 2.0</button>
         <button class="nav" data-view="outbox">Outbox</button>
-        <button class="nav" data-view="system">Sistema</button>
-        <button class="nav" data-view="rules">Reglas</button>
-        <button class="nav" data-view="cadences">Cadencias</button>
+        <button class="nav" data-view="system">System</button>
+        <button class="nav" data-view="rules">Rules</button>
+        <button class="nav" data-view="cadences">Cadences</button>
         <button class="nav" data-view="prompts">Prompts</button>
-        <button class="nav" data-view="providers">Proveedores</button>
+        <button class="nav" data-view="providers">Providers</button>
         <button class="nav" data-view="slack">Slack</button>
         <button class="nav" data-view="lab">Test Lab</button>
         <button class="nav" data-view="logs">Logs</button>
       </nav>
       <div class="rail-note">
         <span id="syncDot"></span>
-        <p id="syncText">Cargando sistema...</p>
+        <p id="syncText">Loading system...</p>
       </div>
     </aside>
 
     <main class="workspace">
       <header class="hero">
         <div>
-          <p class="kicker">Ana 2.0 command center</p>
-          <h1>Controla a Ana sin perseguir nodos</h1>
-          <p class="hero-copy">Sistema paralelo para probar contactos, ver decisiones, controlar cadencias y preparar la migracion sin tocar produccion.</p>
+          <p class="kicker">Blackbook AI command center</p>
+          <h1>The control layer for Ana.</h1>
+          <p class="hero-copy">A separate operating system for testing leads, auditing decisions, tuning cadences, and migrating away from fragile n8n logic without touching production.</p>
         </div>
         <div class="hero-actions">
-          <button id="seedButton" class="button secondary">Inicializar defaults</button>
-          <button id="refreshButton" class="button primary">Actualizar</button>
+          <button id="seedButton" class="button secondary">Initialize Defaults</button>
+          <button id="refreshButton" class="button primary">Refresh</button>
         </div>
       </header>
 
@@ -54,21 +54,23 @@
           <article class="panel">
             <div class="panel-head">
               <div>
-                <h2>Reglas críticas</h2>
-                <p>Lo que evita que Ana siga cometiendo errores caros.</p>
+                <p class="eyebrow">Risk Controls</p>
+                <h2>Critical Rules</h2>
+                <p>The guardrails that keep Ana from making expensive mistakes.</p>
               </div>
-              <button class="link-button" data-jump="rules">Editar reglas</button>
+              <button class="link-button" data-jump="rules">Edit Rules</button>
             </div>
             <div id="criticalRules" class="stack"></div>
           </article>
 
-          <article class="panel">
+          <article class="panel accent-panel">
             <div class="panel-head">
               <div>
-                <h2>Test rápido</h2>
-                <p>Prueba un mensaje sin tocar producción.</p>
+                <p class="eyebrow">Sandbox</p>
+                <h2>Quick Test</h2>
+                <p>Test one message without touching production.</p>
               </div>
-              <button class="link-button" data-jump="lab">Abrir lab</button>
+              <button class="link-button" data-jump="lab">Open Lab</button>
             </div>
             <form id="quickTestForm" class="quick-test">
               <select name="lead_type">
@@ -78,17 +80,18 @@
                 <option value="landlord">Landlord</option>
               </select>
               <textarea name="message">Have an agent call me asap</textarea>
-              <button class="button primary">Probar decisión</button>
+              <button class="button primary">Test Decision</button>
             </form>
-            <div id="quickDecision" class="decision-card muted-card">Esperando prueba.</div>
+            <div id="quickDecision" class="decision-card muted-card">Waiting for a test.</div>
           </article>
         </div>
 
         <article class="panel">
           <div class="panel-head">
             <div>
-              <h2>Mapa actual de automatizaciones</h2>
-              <p>Esto es lo que existe hoy en n8n y lo que vamos sacando hacia el manager.</p>
+              <p class="eyebrow">Migration Map</p>
+              <h2>Current Automation Modules</h2>
+              <p>The existing n8n system and the modules we are moving into the manager.</p>
             </div>
           </div>
           <div id="workflowMap" class="workflow-grid"></div>
@@ -97,28 +100,29 @@
 
       <section id="ana2" class="view">
         <div class="section-title">
+          <p class="eyebrow">Sandbox Console</p>
           <h2>Ana 2.0 Sandbox</h2>
-          <p>Este modulo no toca contactos reales. Crea un lead test, simula mensajes y revisa exactamente por que Ana decide responder, parar o mandar a review.</p>
+          <p>This module does not touch real contacts. Create a test lead, simulate messages, and see exactly why Ana replies, stops, qualifies, or routes to review.</p>
         </div>
         <div class="layout two">
-          <article class="panel command-panel">
+          <article class="panel accent-panel">
             <div class="panel-head">
               <div>
-                <p class="kicker">Nuevo contacto test</p>
-                <h2>Crear lead sandbox</h2>
+                <p class="eyebrow">Test Contact</p>
+                <h2>Create Sandbox Lead</h2>
               </div>
             </div>
             <form id="ana2ContactForm" class="form">
               <div class="form-row">
-                <label>Nombre<input name="name" value="Jose Test" required /></label>
-                <label>Person ID / test ID<input name="person_id" value="sandbox-jose" required /></label>
+                <label>Name<input name="name" value="Jose Test" required /></label>
+                <label>Person ID / Test ID<input name="person_id" value="sandbox-jose" required /></label>
               </div>
               <div class="form-row">
                 <label>Email<input name="email" value="jose@blackbookproperties.com" /></label>
-                <label>Telefono<input name="phone" placeholder="7865550000" /></label>
+                <label>Phone<input name="phone" placeholder="7865550000" /></label>
               </div>
               <div class="form-row">
-                <label>Tipo
+                <label>Lead Type
                   <select name="lead_type">
                     <option value="buyer">Buyer</option>
                     <option value="seller">Seller</option>
@@ -127,46 +131,46 @@
                     <option value="unknown">Unknown</option>
                   </select>
                 </label>
-                <label>Trigger tag<input name="trigger_tag" value="Ana 2.0 Test" /></label>
+                <label>Trigger Tag<input name="trigger_tag" value="Ana 2.0 Test" /></label>
               </div>
               <div class="form-row">
-                <label>Budget compra/venta<input name="budget" type="number" placeholder="opcional" /></label>
-                <label>Renta mensual<input name="monthly_rent" type="number" value="3500" /></label>
+                <label>Purchase/Sale Budget<input name="budget" type="number" placeholder="optional" /></label>
+                <label>Monthly Rent<input name="monthly_rent" type="number" value="3500" /></label>
               </div>
               <div class="form-row">
-                <label>Lease months<input name="lease_months" type="number" value="3" /></label>
+                <label>Lease Months<input name="lease_months" type="number" value="3" /></label>
                 <label>Area<input name="location_preference" value="Miami / Brickell" /></label>
               </div>
-              <label>Perfil / contexto<textarea name="profile">Testing Ana 2.0 decision engine without touching real production leads.</textarea></label>
-              <button class="button primary">Crear / actualizar contacto test</button>
+              <label>Profile / Context<textarea name="profile">Testing Ana 2.0 decision engine without touching real production leads.</textarea></label>
+              <button class="button primary">Create / Update Test Contact</button>
             </form>
           </article>
 
-          <article class="panel command-panel">
+          <article class="panel">
             <div class="panel-head">
               <div>
-                <p class="kicker">Simulador</p>
-                <h2>Enviar inbound a Ana 2.0</h2>
+                <p class="eyebrow">Decision Engine</p>
+                <h2>Simulate Inbound Message</h2>
               </div>
             </div>
             <form id="ana2MessageForm" class="form">
-              <label>Contacto
+              <label>Contact
                 <select id="ana2ContactSelect" name="contact_id"></select>
               </label>
               <div class="form-row">
-                <label>Canal
+                <label>Channel
                   <select name="channel">
                     <option value="email">Email</option>
                     <option value="sms">SMS</option>
                     <option value="call">Call</option>
                   </select>
                 </label>
-                <label>Modo<input name="mode" value="sandbox" readonly /></label>
+                <label>Mode<input name="mode" value="sandbox" readonly /></label>
               </div>
-              <label>Mensaje inbound<textarea name="body">I need a condo rental for 2 or 3 months from January to March.</textarea></label>
-              <button class="button primary">Evaluar con Ana 2.0</button>
+              <label>Inbound Message<textarea name="body">I need a condo rental for 2 or 3 months from January to March.</textarea></label>
+              <button class="button primary">Evaluate with Ana 2.0</button>
             </form>
-            <div id="ana2Decision" class="decision-card muted-card">Esperando simulacion.</div>
+            <div id="ana2Decision" class="decision-card muted-card">Waiting for simulation.</div>
           </article>
         </div>
 
@@ -174,8 +178,9 @@
           <article class="panel">
             <div class="panel-head">
               <div>
-                <h2>Contactos Ana 2.0</h2>
-                <p>Solo sandbox hasta que activemos el tag real.</p>
+                <p class="eyebrow">Sandbox Leads</p>
+                <h2>Ana 2.0 Contacts</h2>
+                <p>Sandbox only until we activate the real trigger tag.</p>
               </div>
             </div>
             <div id="ana2Contacts" class="stack"></div>
@@ -183,8 +188,9 @@
           <article class="panel">
             <div class="panel-head">
               <div>
-                <h2>Decision log</h2>
-                <p>La razon exacta de cada decision.</p>
+                <p class="eyebrow">Audit Trail</p>
+                <h2>Decision Log</h2>
+                <p>The exact reason behind each decision.</p>
               </div>
             </div>
             <div id="ana2Decisions" class="stack"></div>
@@ -194,23 +200,25 @@
 
       <section id="outbox" class="view">
         <div class="section-title">
-          <h2>Outbox Ana 2.0</h2>
-          <p>Todo lo que Ana generaria queda como draft primero. En sandbox no se envia a proveedores reales.</p>
+          <p class="eyebrow">Human Approval Layer</p>
+          <h2>Ana 2.0 Outbox</h2>
+          <p>Everything Ana would generate is stored as a draft first. In sandbox, nothing is sent to real providers.</p>
         </div>
         <div id="ana2Outbox" class="stack large"></div>
       </section>
 
       <section id="system" class="view">
         <div class="section-title">
-          <h2>Sistema y Emergency Stop</h2>
-          <p>Apaga partes de Ana sin abrir n8n. Estos switches son el control principal.</p>
+          <p class="eyebrow">Operational Safety</p>
+          <h2>System & Emergency Stop</h2>
+          <p>Turn off parts of Ana without opening n8n. These switches are the primary safety controls.</p>
         </div>
-        <article class="panel command-panel">
+        <article class="panel accent-panel">
           <div class="panel-head">
             <div>
-              <p class="kicker">Reglas base Ana 2.0</p>
-              <h2>Settings operativos</h2>
-              <p>Controles editables sin JSON para budget, renter lease, tag disparador y modo seguro.</p>
+              <p class="eyebrow">Ana 2.0 Base Rules</p>
+              <h2>Operational Settings</h2>
+              <p>Editable controls for budget, renter lease length, trigger tag, and safety mode.</p>
             </div>
           </div>
           <form id="ana2SettingsForm" class="form"></form>
@@ -220,32 +228,36 @@
 
       <section id="rules" class="view">
         <div class="section-title">
-          <h2>Reglas de decisión</h2>
-          <p>Edita condiciones y acciones con controles humanos. Ana debe obedecer esto antes de responder.</p>
+          <p class="eyebrow">Deterministic Guardrails</p>
+          <h2>Decision Rules</h2>
+          <p>Edit the conditions and actions Ana must obey before it replies.</p>
         </div>
         <div id="ruleCards" class="stack large"></div>
       </section>
 
       <section id="cadences" class="view">
         <div class="section-title">
-          <h2>Cadencias</h2>
-          <p>Controla qué tipos de lead pasan, presupuestos y pasos de seguimiento.</p>
+          <p class="eyebrow">Follow-up Architecture</p>
+          <h2>Cadences</h2>
+          <p>Control which lead types pass, budgets, and the real Day 1 / Day 2 / Final Exit rhythm.</p>
         </div>
         <div id="cadenceCards" class="stack large"></div>
       </section>
 
       <section id="prompts" class="view">
         <div class="section-title">
+          <p class="eyebrow">Voice & Reasoning</p>
           <h2>Prompts</h2>
-          <p>Mensajes e instrucciones editables. Nada de JSON salvo que lo pidamos más adelante.</p>
+          <p>Editable instructions for SMS, email, calls, and system decisions.</p>
         </div>
         <div id="promptCards" class="stack large"></div>
       </section>
 
       <section id="providers" class="view">
         <div class="section-title">
-          <h2>Canales y proveedores</h2>
-          <p>Twilio, Gmail, Retell, FUB, Airtable y futuros reemplazos.</p>
+          <p class="eyebrow">Swappable Infrastructure</p>
+          <h2>Channels & Providers</h2>
+          <p>Twilio, Gmail, Retell, Follow Up Boss, Airtable, OpenAI, and future replacements.</p>
         </div>
         <div class="layout two">
           <div id="channelCards" class="stack large"></div>
@@ -255,24 +267,26 @@
 
       <section id="slack" class="view">
         <div class="section-title">
-          <h2>Slack routing</h2>
-          <p>Define qué tipo de lead y evento van a cada canal.</p>
+          <p class="eyebrow">Notifications</p>
+          <h2>Slack Routing</h2>
+          <p>Define which lead type and event should go to each Slack destination.</p>
         </div>
         <div id="slackCards" class="stack large"></div>
       </section>
 
       <section id="lab" class="view">
         <div class="section-title">
+          <p class="eyebrow">Evaluation Bench</p>
           <h2>Test Lab</h2>
-          <p>Mete contactos/mensajes de prueba y mira qué haría Ana antes de tocar producción.</p>
+          <p>Run test contacts/messages and see what Ana would do before production is involved.</p>
         </div>
         <div class="layout two lab-layout">
           <article class="panel">
-            <h2>Contacto de prueba</h2>
+            <h2>Test Contact</h2>
             <form id="sandboxForm" class="form">
               <div class="form-row">
-                <label>Nombre<input name="first_name" value="Richard" /></label>
-                <label>Tipo
+                <label>Name<input name="first_name" value="Richard" /></label>
+                <label>Lead Type
                   <select name="lead_type">
                     <option value="buyer">Buyer</option>
                     <option value="seller">Seller</option>
@@ -283,27 +297,27 @@
                 </label>
               </div>
               <div class="form-row">
-                <label>Canal
+                <label>Channel
                   <select name="channel">
                     <option value="sms">SMS</option>
                     <option value="email">Email</option>
                     <option value="call">Call</option>
                   </select>
                 </label>
-                <label>Budget<input name="budget" type="number" placeholder="opcional" /></label>
+                <label>Budget<input name="budget" type="number" placeholder="optional" /></label>
               </div>
-              <label>Mensaje<textarea name="message">Have an agent call me asap</textarea></label>
-              <button class="button primary">Evaluar y guardar test</button>
+              <label>Message<textarea name="message">Have an agent call me asap</textarea></label>
+              <button class="button primary">Evaluate & Save Test</button>
             </form>
           </article>
           <article class="panel">
-            <h2>Resultado</h2>
-            <div id="sandboxDecision" class="decision-card big">Todavía no hay decisión.</div>
+            <h2>Result</h2>
+            <div id="sandboxDecision" class="decision-card big">No decision yet.</div>
           </article>
         </div>
         <article class="panel">
           <div class="panel-head">
-            <h2>Tests recientes</h2>
+            <h2>Recent Tests</h2>
           </div>
           <div id="testsList" class="table"></div>
         </article>
@@ -311,8 +325,9 @@
 
       <section id="logs" class="view">
         <div class="section-title">
+          <p class="eyebrow">System Memory</p>
           <h2>Logs</h2>
-          <p>Auditoría de decisiones, tests y errores. Aquí sabremos qué pasó sin abrir mil ejecuciones.</p>
+          <p>Decision, test, and error audit trails. This is where we see what happened without opening a dozen executions.</p>
         </div>
         <div id="logsList" class="table"></div>
       </section>
@@ -320,11 +335,11 @@
 
     <dialog id="confirmDialog">
       <form method="dialog" class="modal">
-        <h3 id="confirmTitle">Confirmar cambio</h3>
-        <p id="confirmMessage">Vas a cambiar una configuración de Ana.</p>
+        <h3 id="confirmTitle">Confirm Change</h3>
+        <p id="confirmMessage">You are about to change an Ana setting.</p>
         <div class="modal-actions">
-          <button value="cancel" class="button secondary">Cancelar</button>
-          <button value="confirm" class="button danger">Confirmar cambio</button>
+          <button value="cancel" class="button secondary">Cancel</button>
+          <button value="confirm" class="button danger">Confirm Change</button>
         </div>
       </form>
     </dialog>
