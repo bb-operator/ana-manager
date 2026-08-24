@@ -1,4 +1,23 @@
 services:
+  app:
+    build:
+      context: ./app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      MANAGER_BASIC_USER: ${MANAGER_BASIC_USER}
+      MANAGER_BASIC_PASSWORD: ${MANAGER_BASIC_PASSWORD}
+      PORT: "8080"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-app.rule=Host(`${MANAGER_SUBDOMAIN}.${TRAEFIK_HOST}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-app.entrypoints=websecure
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-app.tls.certresolver=letsencrypt
+      - traefik.http.services.${COMPOSE_PROJECT_NAME}-app.loadbalancer.server.port=8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -23,7 +42,7 @@ services:
       SECRET: ${DIRECTUS_SECRET}
       ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL}
       ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD}
-      PUBLIC_URL: https://${MANAGER_SUBDOMAIN}.${TRAEFIK_HOST}
+      PUBLIC_URL: https://directus-${MANAGER_SUBDOMAIN}.${TRAEFIK_HOST}
       DB_CLIENT: pg
       DB_CONNECTION_STRING: ${DATABASE_URL}
       WEBSOCKETS_ENABLED: "true"
@@ -33,10 +52,10 @@ services:
       EXTENSIONS_AUTO_RELOAD: "false"
     labels:
       - traefik.enable=true
-      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.rule=Host(`${MANAGER_SUBDOMAIN}.${TRAEFIK_HOST}`)
-      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.entrypoints=websecure
-      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.tls.certresolver=letsencrypt
-      - traefik.http.services.${COMPOSE_PROJECT_NAME}.loadbalancer.server.port=8055
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-directus.rule=Host(`directus-${MANAGER_SUBDOMAIN}.${TRAEFIK_HOST}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-directus.entrypoints=websecure
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-directus.tls.certresolver=letsencrypt
+      - traefik.http.services.${COMPOSE_PROJECT_NAME}-directus.loadbalancer.server.port=8055
     depends_on:
       postgres:
         condition: service_healthy
@@ -46,4 +65,3 @@ services:
 
 volumes:
   postgres-data:
-

@@ -17,7 +17,13 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Open:
+Open the custom manager:
+
+```text
+http://localhost:8080
+```
+
+Open Directus backend/admin:
 
 ```text
 http://localhost:8055
@@ -52,8 +58,14 @@ cp .env.prod.example .env
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-Then open:
+Then open the custom manager:
 
 ```text
 https://control.blackbookproperties.com
+```
+
+Optional Directus backend/admin:
+
+```text
+https://directus-control.blackbookproperties.com
 ```

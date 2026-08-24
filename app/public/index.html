@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ana System Manager</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <span>Ana System Manager</span>
+        <small>AI Lead Automation</small>
+      </div>
+      <nav>
+        <button class="nav-item active" data-view="dashboard">Dashboard</button>
+        <button class="nav-item" data-view="rules">Reglas</button>
+        <button class="nav-item" data-view="cadences">Cadencias</button>
+        <button class="nav-item" data-view="prompts">Prompts</button>
+        <button class="nav-item" data-view="providers">Proveedores</button>
+        <button class="nav-item" data-view="slack">Slack Alerts</button>
+        <button class="nav-item" data-view="logs">Logs</button>
+        <button class="nav-item danger" data-view="emergency">Emergency Stop</button>
+      </nav>
+    </aside>
+
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Blackbook Properties</p>
+          <h1 data-i18n="title">Panel de Control de Ana</h1>
+          <p class="subtitle" data-i18n="subtitle">Control central para reglas, cadencias, prompts, canales y logs.</p>
+        </div>
+        <div class="top-actions">
+          <button id="languageToggle" class="ghost">EN</button>
+          <button id="refreshButton" class="primary">Actualizar</button>
+        </div>
+      </header>
+
+      <section id="dashboard" class="view active-view">
+        <div class="status-row" id="statusRow"></div>
+        <div class="grid three">
+          <article class="card">
+            <div class="card-head">
+              <h2>Reglas Activas</h2>
+              <span id="rulesCount" class="pill">0</span>
+            </div>
+            <div id="rulesPreview" class="stack"></div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h2>Cadencias</h2>
+              <span id="cadencesCount" class="pill">0</span>
+            </div>
+            <div id="cadencesPreview" class="stack"></div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h2>Proveedores</h2>
+              <span id="providersCount" class="pill">0</span>
+            </div>
+            <div id="providersPreview" class="stack"></div>
+          </article>
+        </div>
+        <div class="grid two">
+          <article class="card">
+            <div class="card-head">
+              <h2>Slack Alerts</h2>
+            </div>
+            <div id="slackPreview" class="stack"></div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h2>Errores Recientes</h2>
+            </div>
+            <div id="errorsPreview" class="table-wrap"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="rules" class="view">
+        <div class="section-head">
+          <h2>Reglas</h2>
+          <p>Controla decisiones duras: handoff, stop, human review, qualified y bloqueos.</p>
+        </div>
+        <div id="rulesList" class="editor-list"></div>
+      </section>
+
+      <section id="cadences" class="view">
+        <div class="section-head">
+          <h2>Cadencias</h2>
+          <p>Activa/desactiva cadencias y define presupuestos por tipo de lead.</p>
+        </div>
+        <div id="cadencesList" class="editor-list"></div>
+      </section>
+
+      <section id="prompts" class="view">
+        <div class="section-head">
+          <h2>Prompts</h2>
+          <p>Edita instrucciones de Ana desde un solo lugar.</p>
+        </div>
+        <div id="promptsList" class="editor-list"></div>
+      </section>
+
+      <section id="providers" class="view">
+        <div class="section-head">
+          <h2>Canales y Proveedores</h2>
+          <p>Controla Twilio, Gmail, Retell, FUB, Airtable y futuros proveedores.</p>
+        </div>
+        <div class="grid two">
+          <div id="channelsList" class="editor-list"></div>
+          <div id="providersList" class="editor-list"></div>
+        </div>
+      </section>
+
+      <section id="slack" class="view">
+        <div class="section-head">
+          <h2>Slack Alerts</h2>
+          <p>Define rutas por tipo de lead y evento.</p>
+        </div>
+        <div id="slackList" class="editor-list"></div>
+      </section>
+
+      <section id="logs" class="view">
+        <div class="section-head">
+          <h2>Logs</h2>
+          <p>Auditoria de decisiones, acciones y errores.</p>
+        </div>
+        <div id="logsList" class="table-wrap"></div>
+      </section>
+
+      <section id="emergency" class="view">
+        <div class="section-head danger-text">
+          <h2>Emergency Stop</h2>
+          <p>Apaga partes del sistema sin entrar a n8n.</p>
+        </div>
+        <div id="emergencyList" class="editor-list"></div>
+      </section>
+    </main>
+
+    <dialog id="confirmDialog">
+      <form method="dialog" class="modal">
+        <h3 id="confirmTitle">Confirmar cambio</h3>
+        <p id="confirmMessage">Estas a punto de modificar la configuracion de Ana.</p>
+        <div class="modal-actions">
+          <button value="cancel" class="ghost">Cancelar</button>
+          <button value="confirm" class="primary">Confirmar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
+
