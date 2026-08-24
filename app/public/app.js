@@ -251,6 +251,55 @@ function renderSystem() {
       </label>
     </article>
   `).join('');
+  renderSettings();
+}
+
+function settingValue(key, fallback = {}) {
+  return (state.data.settings || []).find((setting) => setting.key === key)?.value || fallback;
+}
+
+function renderSettings() {
+  const form = dom('#ana2SettingsForm');
+  if (!form) return;
+  const budgetCap = settingValue('qualified_budget_cap', { buyer_seller_max: 2000000 });
+  const renterMinLease = settingValue('renter_min_lease_months', { value: 12 });
+  const triggerTag = settingValue('ana2_trigger_tag', { value: 'Ana 2.0 Test' });
+  const safety = settingValue('ana2_safety_mode', { mode: 'sandbox', real_sends_enabled: false, fub_writes_enabled: false });
+  form.innerHTML = `
+    <div class="form-row">
+      <label>Buyer/Seller max budget
+        <input name="buyer_seller_max" type="number" value="${escapeHtml(budgetCap.buyer_seller_max ?? 2000000)}" />
+      </label>
+      <label>Renter lease minimo meses
+        <input name="renter_min_lease_months" type="number" value="${escapeHtml(renterMinLease.value ?? 12)}" />
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Tag disparador sandbox
+        <input name="ana2_trigger_tag" value="${escapeHtml(triggerTag.value || 'Ana 2.0 Test')}" />
+      </label>
+      <label>Modo
+        <select name="ana2_mode">
+          <option value="sandbox" ${selected(safety.mode, 'sandbox')}>Sandbox</option>
+          <option value="production" ${selected(safety.mode, 'production')}>Production</option>
+        </select>
+      </label>
+    </div>
+    <div class="action-grid">
+      <label class="check-chip">
+        <input type="checkbox" name="real_sends_enabled" value="true" ${safety.real_sends_enabled ? 'checked' : ''} />
+        <span>Permitir envios reales</span>
+      </label>
+      <label class="check-chip">
+        <input type="checkbox" name="fub_writes_enabled" value="true" ${safety.fub_writes_enabled ? 'checked' : ''} />
+        <span>Permitir writes a FUB</span>
+      </label>
+    </div>
+    <div class="form-footer">
+      <span>Recomendado ahora: sandbox, envios reales OFF, FUB writes OFF.</span>
+      <button class="button primary">Guardar settings Ana 2.0</button>
+    </div>
+  `;
 }
 
 function renderRules() {
@@ -727,6 +776,38 @@ function wireEvents() {
   });
 
   document.body.addEventListener('submit', async (event) => {
+    if (event.target.id === 'ana2SettingsForm') {
+      event.preventDefault();
+      if (!(await confirmChange('Guardar settings base de Ana 2.0.'))) return;
+      const data = new FormData(event.target);
+      await Promise.all([
+        api('/api/settings/qualified_budget_cap', {
+          method: 'PATCH',
+          body: JSON.stringify({ value: { buyer_seller_max: Number(data.get('buyer_seller_max') || 2000000) } }),
+        }),
+        api('/api/settings/renter_min_lease_months', {
+          method: 'PATCH',
+          body: JSON.stringify({ value: { value: Number(data.get('renter_min_lease_months') || 12) } }),
+        }),
+        api('/api/settings/ana2_trigger_tag', {
+          method: 'PATCH',
+          body: JSON.stringify({ value: { value: data.get('ana2_trigger_tag') || 'Ana 2.0 Test' } }),
+        }),
+        api('/api/settings/ana2_safety_mode', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            value: {
+              mode: data.get('ana2_mode') || 'sandbox',
+              real_sends_enabled: data.has('real_sends_enabled'),
+              fub_writes_enabled: data.has('fub_writes_enabled'),
+            },
+          }),
+        }),
+      ]);
+      await loadAll();
+      return;
+    }
+
     if (event.target.id === 'ana2ContactForm') {
       event.preventDefault();
       if (!(await confirmChange('Crear o actualizar este contacto sandbox de Ana 2.0.'))) return;

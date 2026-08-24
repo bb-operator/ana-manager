@@ -747,7 +747,7 @@ function pickPayload(body, fields) {
 
 function normalizeJsonFields(payload) {
   for (const [key, value] of Object.entries(payload)) {
-    if (['conditions', 'config', 'quiet_hours', 'output_contract', 'stop_conditions', 'stop_if', 'provider_payload'].includes(key) && typeof value === 'string') {
+    if (['conditions', 'config', 'quiet_hours', 'output_contract', 'stop_conditions', 'stop_if', 'provider_payload', 'value'].includes(key) && typeof value === 'string') {
       payload[key] = value.trim() ? JSON.parse(value) : {};
     }
   }
@@ -1077,6 +1077,22 @@ app.post('/api/ana2/n8n/evaluate', requireSharedSecret, async (req, res, next) =
     const reply = generateAna2Reply(req.body, decision);
     const outbox = await createAna2Outbox(req.body.contact_id || null, saved.id, req.body.channel || 'system', reply);
     res.json({ ok: true, decision: saved.decision, decision_id: saved.id, outbox });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch('/api/settings/:key', async (req, res, next) => {
+  try {
+    if (!req.body || typeof req.body.value !== 'object' || Array.isArray(req.body.value)) {
+      return res.status(400).json({ error: 'Settings value must be an object' });
+    }
+    const result = await pool.query(
+      'update asm_system_settings set value = $1, updated_at = now() where key = $2 returning key, label_es, value, description_es, is_sensitive',
+      [req.body.value, req.params.key]
+    );
+    if (!result.rows[0]) return res.status(404).json({ error: 'Setting not found' });
+    res.json(normalizeRow(result.rows[0]));
   } catch (error) {
     next(error);
   }
