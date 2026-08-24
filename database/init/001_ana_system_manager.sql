@@ -302,7 +302,3 @@ UNION ALL
 SELECT id, 2, 'email', 60, 'first_touch_email', '{"replied":true,"qualified":true}'::jsonb FROM asm_cadences
 UNION ALL
 SELECT id, 3, 'call', 1440, 'call_result_decision', '{"replied":true,"qualified":true,"no_call":true}'::jsonb FROM asm_cadences;
-
-INSERT INTO asm_workflow_modules (key, name, n8n_workflow_id, module_type, enabled, role_description, migration_status, control_surface, notes) VALUES
-('ana2_fub_tag_intake', 'ANA 2.0 - FUB Tag Intake (Manager)', 'I2w76oYX6BiqYJp1', 'ana2_intake', true, 'Polls Follow Up Boss for people carrying the Ana 2.0 trigger tag and registers them in the Manager.', 'manager_controlled', '{"folder":"hSHZ6pWSMIPL3UEk","trigger":"FUB tag","creates":"manager contact + Day 1 sandbox drafts","idempotent":true}', 'Small n8n cable for manual pilot enrollment by CRM tag.')
-ON CONFLICT (key) DO NOTHING;
