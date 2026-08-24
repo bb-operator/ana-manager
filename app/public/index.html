@@ -4,30 +4,30 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Ana 2.0 Control Center</title>
-    <link rel="stylesheet" href="/styles.css?v=ana2-warroom-20260824" />
+    <link rel="stylesheet" href="/styles.css?v=ana2-bi-20260824" />
   </head>
   <body>
     <aside class="rail">
       <div class="brand">
         <span class="brand-mark">BB</span>
         <div>
-          <strong>Ana 2.0</strong>
-          <small>Blackbook AI Operations</small>
+          <strong>Ana Manager</strong>
+          <small>Sandbox workspace</small>
         </div>
       </div>
       <nav>
-        <button class="nav active" data-view="launch">Launch</button>
-        <button class="nav" data-view="dashboard">Command</button>
-        <button class="nav" data-view="ana2">Ana 2.0</button>
-        <button class="nav" data-view="outbox">Outbox</button>
-        <button class="nav" data-view="system">System</button>
-        <button class="nav" data-view="rules">Rules</button>
-        <button class="nav" data-view="cadences">Cadences</button>
-        <button class="nav" data-view="prompts">Prompts</button>
-        <button class="nav" data-view="providers">Providers</button>
-        <button class="nav" data-view="slack">Slack</button>
-        <button class="nav" data-view="lab">Test Lab</button>
-        <button class="nav" data-view="logs">Logs</button>
+        <button class="nav active" data-view="launch">1. Overview</button>
+        <button class="nav" data-view="ana2">2. Sandbox</button>
+        <button class="nav" data-view="outbox">3. Outbox</button>
+        <button class="nav" data-view="cadences">4. Cadences</button>
+        <button class="nav" data-view="rules">5. Rules</button>
+        <button class="nav" data-view="system">6. Controls</button>
+        <button class="nav" data-view="prompts">7. Prompts</button>
+        <button class="nav" data-view="providers">8. Providers</button>
+        <button class="nav" data-view="slack">9. Slack</button>
+        <button class="nav" data-view="lab">10. Test Lab</button>
+        <button class="nav" data-view="logs">11. Logs</button>
+        <button class="nav" data-view="dashboard">12. Modules</button>
       </nav>
       <div class="rail-note">
         <span id="syncDot"></span>
@@ -36,11 +36,10 @@
     </aside>
 
     <main class="workspace">
-      <header class="hero">
+      <header class="topbar">
         <div>
-          <p class="kicker">Blackbook AI command center</p>
-          <h1>Ana 2.0 operations, without the maze.</h1>
-          <p class="hero-copy">Tag one test contact in Follow Up Boss, let Ana 2.0 register it, draft the cadence, audit the decision, and keep production Ana untouched until you approve the switch.</p>
+          <p class="kicker">Demo Workspace</p>
+          <h1 id="pageTitle">1. Overview</h1>
         </div>
         <div class="hero-actions">
           <button id="seedButton" class="button secondary">Initialize Defaults</button>
@@ -49,20 +48,33 @@
       </header>
 
       <section id="launch" class="view active">
-        <div class="section-title">
-          <p class="eyebrow">Today Mode</p>
-          <h2>Launch Ana 2.0 safely</h2>
-          <p>This is the operating checklist: trigger tag, safety mode, sandbox contacts, cadence drafts, and n8n modules.</p>
+        <div class="filter-row">
+          <label>Date range<select><option>Last month</option><option>Last 7 days</option><option>Today</option></select></label>
+          <label>System mode<select><option>Sandbox</option><option>Production ready</option></select></label>
+          <label>Lead source<select><option>All</option><option>Follow Up Boss tag</option><option>Manual test</option></select></label>
         </div>
+
+        <div class="section-title">
+          <p class="eyebrow">Performance overview</p>
+          <h2>Ana 2.0 launch dashboard</h2>
+          <p>Tag a test contact in Follow Up Boss, let the Manager register it, create Day 1 drafts, and keep Ana 1.0 untouched.</p>
+        </div>
+
+        <div class="metric-grid" id="launchMetricGrid">
+          <article class="metric"><small>Trigger tag</small><span id="triggerTagTitle">Loading...</span><p>Follow Up Boss enrollment tag</p></article>
+          <article class="metric"><small>Safety mode</small><span id="launchStatus">Checking</span><p>Real sends are controlled here</p></article>
+          <article class="metric"><small>Sandbox contacts</small><span id="launchContactsMetric">0</span><p>Registered in Ana 2.0</p></article>
+          <article class="metric"><small>Outbox drafts</small><span id="launchDraftsMetric">0</span><p>Generated, not sent</p></article>
+        </div>
+
         <div class="launch-grid">
           <article class="launch-card main">
             <div class="panel-head">
               <div>
-                <p class="eyebrow">Follow Up Boss Trigger</p>
-                <h2 id="triggerTagTitle">Loading trigger tag...</h2>
-                <p>Add this tag to one test contact first. Ana 1.0 remains untouched.</p>
+                <p class="eyebrow">Readiness</p>
+                <h2>System status</h2>
+                <p>Everything here is sandbox until you explicitly enable real sends.</p>
               </div>
-              <span id="launchStatus" class="launch-status">Checking</span>
             </div>
             <div id="readinessPanel" class="readiness-grid"></div>
           </article>
@@ -421,6 +433,6 @@
       </form>
     </dialog>
 
-    <script src="/app.js?v=ana2-warroom-20260824" type="module"></script>
+    <script src="/app.js?v=ana2-bi-20260824" type="module"></script>
   </body>
 </html>

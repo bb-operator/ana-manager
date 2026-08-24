@@ -71,6 +71,21 @@ const ana2ActionLabels = {
   log_only: 'Log Only',
 };
 
+const viewTitles = {
+  launch: '1. Overview',
+  ana2: '2. Sandbox',
+  outbox: '3. Outbox',
+  cadences: '4. Cadences',
+  rules: '5. Rules',
+  system: '6. Controls',
+  prompts: '7. Prompts',
+  providers: '8. Providers',
+  slack: '9. Slack',
+  lab: '10. Test Lab',
+  logs: '11. Logs',
+  dashboard: '12. Modules',
+};
+
 const dom = (selector) => document.querySelector(selector);
 const domAll = (selector) => [...document.querySelectorAll(selector)];
 
@@ -258,6 +273,10 @@ function renderLaunch() {
   const live = readiness.status === 'live_sends_enabled';
   dom('#launchStatus').textContent = live ? 'LIVE SENDS ON' : 'SANDBOX SAFE';
   dom('#launchStatus').className = `launch-status ${live ? 'live' : 'sandbox'}`;
+  const contactsMetric = dom('#launchContactsMetric');
+  const draftsMetric = dom('#launchDraftsMetric');
+  if (contactsMetric) contactsMetric.textContent = counts.contacts || 0;
+  if (draftsMetric) draftsMetric.textContent = counts.drafts || 0;
   dom('#readinessPanel').innerHTML = `
     <div><small>Mode</small><strong>${escapeHtml(safety.mode || 'sandbox')}</strong></div>
     <div><small>Real Sends</small><strong>${safety.real_sends_enabled ? 'Enabled' : 'Blocked'}</strong></div>
@@ -813,6 +832,8 @@ async function loadAll() {
 function activate(view) {
   domAll('.nav').forEach((button) => button.classList.toggle('active', button.dataset.view === view));
   domAll('.view').forEach((section) => section.classList.toggle('active', section.id === view));
+  const title = dom('#pageTitle');
+  if (title) title.textContent = viewTitles[view] || view;
 }
 
 function wireEvents() {
