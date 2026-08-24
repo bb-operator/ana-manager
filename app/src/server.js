@@ -315,12 +315,12 @@ async function seedDefaults() {
 
   await pool.query(`
     INSERT INTO asm_cadence_steps (cadence_id, step_number, channel, delay_minutes, prompt_key, stop_if)
-    SELECT id, 1, 'sms', 0, 'first_touch_sms', '{"replied":true,"qualified":true}'::jsonb FROM asm_cadences
+    SELECT id, 1, 'sms'::asm_channel, 0, 'first_touch_sms', '{"replied":true,"qualified":true}'::jsonb FROM asm_cadences
     ON CONFLICT (cadence_id, step_number) DO NOTHING
   `);
   await pool.query(`
     INSERT INTO asm_cadence_steps (cadence_id, step_number, channel, delay_minutes, prompt_key, stop_if)
-    SELECT id, 2, 'sms', 1440, 'first_touch_sms', '{"replied":true,"qualified":true}'::jsonb FROM asm_cadences
+    SELECT id, 2, 'sms'::asm_channel, 1440, 'first_touch_sms', '{"replied":true,"qualified":true}'::jsonb FROM asm_cadences
     ON CONFLICT (cadence_id, step_number) DO UPDATE SET
       channel = EXCLUDED.channel,
       delay_minutes = EXCLUDED.delay_minutes,
@@ -332,7 +332,7 @@ async function seedDefaults() {
   `);
   await pool.query(`
     INSERT INTO asm_cadence_steps (cadence_id, step_number, channel, delay_minutes, prompt_key, stop_if)
-    SELECT id, 3, 'email', 2880, 'first_touch_email', '{"replied":true,"qualified":true,"human_review":true}'::jsonb FROM asm_cadences
+    SELECT id, 3, 'email'::asm_channel, 2880, 'first_touch_email', '{"replied":true,"qualified":true,"human_review":true}'::jsonb FROM asm_cadences
     ON CONFLICT (cadence_id, step_number) DO UPDATE SET
       channel = EXCLUDED.channel,
       delay_minutes = EXCLUDED.delay_minutes,
@@ -344,19 +344,19 @@ async function seedDefaults() {
   `);
   await pool.query(`
     INSERT INTO asm_cadence_actions (cadence_id, round_number, action_order, channel, delay_minutes, prompt_key, label_es, label_en, stop_if)
-    SELECT id, 1, 1, 'email', 0, 'first_touch_email', 'Dia 1 email', 'Day 1 email', '{"replied":true,"qualified":true,"handed_off":true}'::jsonb FROM asm_cadences
+    SELECT id, 1, 1, 'email'::asm_channel, 0, 'first_touch_email', 'Dia 1 email', 'Day 1 email', '{"replied":true,"qualified":true,"handed_off":true}'::jsonb FROM asm_cadences
     UNION ALL
-    SELECT id, 1, 2, 'sms', 0, 'first_touch_sms', 'Dia 1 SMS', 'Day 1 SMS', '{"replied":true,"qualified":true,"handed_off":true}'::jsonb FROM asm_cadences
+    SELECT id, 1, 2, 'sms'::asm_channel, 0, 'first_touch_sms', 'Dia 1 SMS', 'Day 1 SMS', '{"replied":true,"qualified":true,"handed_off":true}'::jsonb FROM asm_cadences
     UNION ALL
-    SELECT id, 1, 3, 'call', 0, 'call_result_decision', 'Dia 1 llamada', 'Day 1 call', '{"replied":true,"qualified":true,"no_call":true,"handed_off":true}'::jsonb FROM asm_cadences
+    SELECT id, 1, 3, 'call'::asm_channel, 0, 'call_result_decision', 'Dia 1 llamada', 'Day 1 call', '{"replied":true,"qualified":true,"no_call":true,"handed_off":true}'::jsonb FROM asm_cadences
     UNION ALL
-    SELECT id, 2, 1, 'email', 1440, 'round2_email', 'Dia 2 email', 'Day 2 email', '{"replied":true,"qualified":true,"handed_off":true}'::jsonb FROM asm_cadences
+    SELECT id, 2, 1, 'email'::asm_channel, 1440, 'round2_email', 'Dia 2 email', 'Day 2 email', '{"replied":true,"qualified":true,"handed_off":true}'::jsonb FROM asm_cadences
     UNION ALL
-    SELECT id, 2, 2, 'sms', 1440, 'round2_sms', 'Dia 2 SMS', 'Day 2 SMS', '{"replied":true,"qualified":true,"handed_off":true}'::jsonb FROM asm_cadences
+    SELECT id, 2, 2, 'sms'::asm_channel, 1440, 'round2_sms', 'Dia 2 SMS', 'Day 2 SMS', '{"replied":true,"qualified":true,"handed_off":true}'::jsonb FROM asm_cadences
     UNION ALL
-    SELECT id, 2, 3, 'call', 1440, 'call_result_decision', 'Dia 2 llamada', 'Day 2 call', '{"replied":true,"qualified":true,"no_call":true,"handed_off":true}'::jsonb FROM asm_cadences
+    SELECT id, 2, 3, 'call'::asm_channel, 1440, 'call_result_decision', 'Dia 2 llamada', 'Day 2 call', '{"replied":true,"qualified":true,"no_call":true,"handed_off":true}'::jsonb FROM asm_cadences
     UNION ALL
-    SELECT id, 3, 1, 'email', 2880, 'final_exit_email', 'Dia 3 salida final', 'Day 3 final exit', '{"replied":true,"qualified":true,"handed_off":true}'::jsonb FROM asm_cadences
+    SELECT id, 3, 1, 'email'::asm_channel, 2880, 'final_exit_email', 'Dia 3 salida final', 'Day 3 final exit', '{"replied":true,"qualified":true,"handed_off":true}'::jsonb FROM asm_cadences
     ON CONFLICT (cadence_id, round_number, action_order) DO NOTHING
   `);
 }
